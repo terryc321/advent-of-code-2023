@@ -1,0 +1,7 @@
+
+interesting puzzle
+
+we used code generation technique to figure out the bounds at runtime to
+generate code that when run
+ is like what it would be if it were compiled
+
