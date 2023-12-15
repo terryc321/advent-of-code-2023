@@ -13,7 +13,7 @@ day14
 ;;(use-modules (rnrs)) ;; assert 
 (use-modules (srfi srfi-1)) ;; first second third ...
 (use-modules (srfi srfi-2)) ;; first second third ...
-(use-modules stat-prof) ;; statistical profiler
+(use-modules (statprof)) ;; statistical profiler
 
 (use-modules (rnrs)) ;; assert
 
@@ -157,6 +157,7 @@ day14
      (#t v))))
 
 
+
 (define (show-tilt v)
   (let ((width (length (list-ref v 0)))
 	(height (length v))
@@ -202,6 +203,16 @@ day14
   (tilt input2)
   (find-load input2))
 
+(define (viz in)
+  (format #t "~%")
+  (dolist (row in)
+	  (dolist (ch row)
+		  (format #t "~a" ch))
+	  (format #t "~%"))
+  (format #t "~%"))
+
+
+		  
 
 
 #|
