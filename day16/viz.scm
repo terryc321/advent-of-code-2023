@@ -139,7 +139,8 @@ read-all : read all lines of file and slurp into a string list
 (define example2 (list->grid (read-all "example2")))
 
 ;;(define output (read-expr "output4"))
-(define output #f) ;;(read-all-lists "output4"))
+(define output (read-expr "output5"))
+
 (define output-filename "output4")
 
 
@@ -186,6 +187,7 @@ like ticks milliseconds since sdl started
 (define mouse-y 0)
 (define hash #f)
 (define hot-vector #f)
+(define hot-count 0)
 
 
 (define mouse-messages 0)
@@ -448,7 +450,25 @@ until need more data ...
 (define (draw-all-hotspots ren)
   (cond
    (ren
-    (get-expr-and-tally)
+    (call/cc (lambda (abort)
+	       (set! hot-count 0)	       
+	       (let ((nstep 0))
+		 (do-list (e output)
+			  (match e
+			    ((x y d t)
+			     (cond
+			      ((<= t step)
+			       (set! hot-count (1+ hot-count))
+			       (set! nstep (1+ nstep))
+			       (draw-single-hotspot ren x y))
+			      (#t
+			       (abort #t))))))
+		 (when (> step nstep)
+		   (set! step nstep))))))))
+
+
+#|
+    ;;(get-expr-and-tally)
       (let ((r 0)
 	(s 0))
     (while (< s code-height)
@@ -461,9 +481,7 @@ until need more data ...
 	     ((and time (<= time step)) (draw-single-hotspot ren r s))))))
 	(set! r (+ r 1)))
       (set! s (+ s 1)))))))
-
-
-
+|#
 
     ;; (hash-fold (lambda (key value seed)
     ;; 		 ;; for side effects only
@@ -547,7 +565,7 @@ allows forwards and backwards against time
       (draw-all-mirrors ren)
       
       (set-renderer-draw-color! ren 255 0 0 0)
-      (draw-text ren (format #f "mouse [~a,~a] : out [~a,~a] : step [~a] : hash entries [~a]" mouse-x mouse-y out-x out-y step (hash-size hash))
+      (draw-text ren (format #f "mouse [~a,~a] : out [~a,~a] : step [~a] : hits [~a]" mouse-x mouse-y out-x out-y step hot-count)
 		 25 20)
       ;; ----- display 
       (present-renderer ren)))
@@ -643,15 +661,27 @@ allows forwards and backwards against time
 (set! code-width (grid-width code))
 (set! code-height (grid-height code))
 (set! hash (make-hash-table))
-(set! output '())
-(set! my-port (open-input-file output-filename))
+;;(set! output '())
+;;(set! my-port (open-input-file output-filename))
 ;; should be a 2d array 
 (set! hot-vector (make-vector code-height))
 (do-list (i (iota code-height))
 	 (vector-set! hot-vector i (make-vector code-width #f)))
 
+;; record data in hot vector
+(do-list (e output)
+	 (match e
+	   ((x y 'U t)
+	    (vector-set! (vector-ref hot-vector y) x t))))
 
-(format #t "file portmyport = ~a ~%" my-port)
+(format #t "3 of output = ~a ~%" (take output 3))
+(format #t "~% loaded ----- all ------data --------- ~a points ~%" (length output))
+(set! hot-count 0)
+
+
+
+
+;;(format #t "file portmyport = ~a ~%" my-port)
 
 
 (sdl-init)

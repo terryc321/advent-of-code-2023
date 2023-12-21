@@ -135,10 +135,14 @@ replay using viz.scm
 |#
 
 (define hot '())
+(define hot-count 0)
+(define hot-vector #f)
 
 (define width 0)
 (define height 0)
 (define vv #f)
+
+(define nloop 0)
 
 ;; compare only x-y-direction , ignore time stamp
 (define (compare-only-xyd? r s)
@@ -148,12 +152,33 @@ replay using viz.scm
 
 
 
-(define (hit x y d t)
-  (let ((s (list x y t d)))
-    (cond
-     ;;((member s hot equal?) #f)
-     ((member s hot compare-only-xyd?) #f)
-     (#t (set! hot (cons s hot))))))
+(define (hot-xy? x y)
+  (vector-ref (vector-ref hot-vector y) x))
+
+(define (set-hotxy x y n)
+  (vector-set! (vector-ref hot-vector y) x n))
+
+
+(define (hit g)
+;;  (format #t "check g : hit : ~a ~%" g)
+  (match g
+    ((x y d t) 
+     (cond
+      ((hot-xy? x y) #f)
+      (#t (set-hotxy x y t)
+	  ;;(format #t "HO T   HO T        T O H  T  O  H ~%")
+	  (set! hot-count (+ 1 hot-count))
+	  (format #t "hit [~a , ~a] at time [~a]  : hot count [~a] ~%" x y t hot-count)
+	  (cond
+	   ((= t (hot-xy? x y)) 'ok)
+	   (#t (error "hit function did not record my hit !!~%"))))))))
+
+
+
+
+     ;; ;;((member s hot equal?) #f)
+     ;; ((member s hot compare-only-xyd?) #f)
+     ;; (#t (set! hot (cons s hot))))))
 
 
 (define (laser-right state c)
@@ -166,7 +191,6 @@ replay using viz.scm
       ((char=? c #\-)  (list (list (1+ x) y 'R (1+ t))))
       ((char=? c #\|)  (list (list x (1- y) 'U (1+ t)) (list x (1+ y) 'D (1+ t))))
       (#t (error "bad-dir right"))))))
-
 
 
 (define (laser-left state c)
@@ -203,14 +227,9 @@ replay using viz.scm
       ((char=? c #\/)  (list (list (1- x) y 'L (1+ t))))
       ((char=? c #\\)  (list (list (1+ x) y 'R (1+ t))))
       ((char=? c #\-) 
-       (cond
-	((= t 674) (format #t "step 674 : c = ~a : d = ~a ***************************~%" c d))
-	((= t 206) (format #t "step 206 : c = ~a : d = ~a *************************** ~%" c d))
-	)
        (list (list (1- x) y 'L (1+ t)) (list (1+ x) y 'R (1+ t))))
       ((char=? c #\|) (list (list x (1+ y) 'D (1+ t))))
       (#t (error "bad-dir down"))))))
-
 
 
 (define (laser state) ;; x y d t
@@ -242,8 +261,14 @@ replay using viz.scm
 	((x y d t) (and (>= x 0)(< x width)(>= y 0)(< y height))))
       #f))
 
+
+
 (define (laser-loop-helper states)
-  (do-list (g states) (format #t "~a~%" g))
+  (format #t "loop ~a : hot-count ~a ~%" nloop hot-count)
+  (set! nloop (1+ nloop))
+  (do-list (g states)
+	   ;;(format #t "~a~%" g)
+	   (hit g))
   (let ((next-gen (filter live-onboard?
 			  (apply append
 				 (filter (lambda (x)(if x x #f))
@@ -255,20 +280,48 @@ replay using viz.scm
 
 
 
+
 (define (laser-loop x y d t)
   (let ((states (list (list x y d t))))
     (laser-loop-helper states)))
 
 
-(define (laser-entry vv2 x y d t)
+(define (laser-entry vv2 x y d t)  
   (set! vv vv2)
   (set! width (grid-width vv))
   (set! height (grid-height vv))
+  (set! nloop 0)
+  (set! hot-vector (make-vector height))
+  (do-list (i (iota height))
+	   (vector-set! hot-vector i (make-vector width #f)))
+  (set! hot-count 0)
   (laser-loop x y d t))
 
 
 (define (results)
-  (sort hot (lambda (x y) (< (third x)(third y)))))
+  (let ((wl (iota width))
+	(hl (iota height))
+	(tot 0))
+    (do-list (y hl)
+	    (do-list (x wl)
+		    (let ((t (vector-ref (vector-ref hot-vector y) x)))
+		      (cond
+		       ((and t (integer? t)) (set! tot (+ 1 tot)))))))
+    tot))
+
+
+(define (results2)
+  (let ((wl (iota width))
+	(hl (iota height))
+	(xs '()))
+    (do-list (y hl)
+	    (do-list (x wl)
+		    (let ((t (vector-ref (vector-ref hot-vector y) x)))
+		      (cond
+		       ((and t (integer? t)) (set! xs (cons (list x y 'U t) xs)))))))
+    (sort xs (lambda (x y)(< (fourth x)(fourth y))))))
+
+
 
 
 ;; x y direction time-t
@@ -284,7 +337,25 @@ replay using viz.scm
   (let ((x 0)(y 0)(dir 'R)(t 0))
     (laser-entry input 0 0 'R t)))
 
+
+
+
 #|
+
+check 2 --- 7392 --- iterating over vector 2d for integers
+
+after some ruminating ...... visualiser ...... 7392 ... seems to be latest hot-count
+
+
+loop 624 : hot-count 7390 
+loop 625 : hot-count 7390 
+hit [0 , 33] at time [625]  : hot count [7391] 
+hit [39 , 30] at time [625]  : hot count [7392] 
+loop 626 : hot-count 7392 
+loop 627 : hot-count 7392 
+
+
+
 ;; hot.length 1834
 ;; hot .length = 1903 
 
@@ -296,12 +367,7 @@ x y time direction
 
 sorting based on third entry time
 
-
-
-
-
-
-(part-1)
+part-1)
 (length (results)) => 1834
 
 (results)
@@ -317,6 +383,7 @@ even though 1834 squares are occupied , it took only 1627 to cover those squares
 
 this is because lasers split up and cover more ground than single laser being
 rerflected , more than one single laser could
+
 
 
 
