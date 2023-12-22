@@ -118,6 +118,9 @@ these on the left are the symbols to use for chcken scheme !!!
 (define surface #f)
 (define texture #f)
 
+;;----- 2nd window
+
+
 ;; -------------- model stuff -------------------------------------
 (define code #f)
 (define code-width #f)
@@ -457,7 +460,9 @@ first try draw a star pattern
   (let ((x 0)
 	(y 0)
 	(dx box-size)
-	(dy box-size))
+	(dy box-size)
+	(border 3)
+	)
     (set! x (+ dx (* (- rx out-x) box-size)))
     (set! y (+ dy (* (- ry out-y) box-size)))
     (cond
@@ -466,7 +471,10 @@ first try draw a star pattern
        (>= x dx)
        (< y (- window-height (* 2 box-size)))
        (< x (- window-width (* 2 box-size))))
-      (sdl2:render-fill-rect! renderer (sdl2:make-rect x y dx dy))))))
+      (sdl2:render-fill-rect! renderer (sdl2:make-rect (+ x border) (+ y border)
+						       (- dx (* border 2))
+						       (- dy (* border 2))
+						       ))))))
 
 
 
@@ -524,7 +532,10 @@ first try draw a star pattern
       (('path path 'id id 'cost cost)
        (set! path-data path)
        (set! id-data id)
-       (set! cost-data cost)))))
+       (set! cost-data cost)
+       (format #t "path id ~a~%path ~a ~%" id path-data)
+       )
+      )))
 
 
 
@@ -948,7 +959,8 @@ complete re-write based on how chicken scheme implements sdl2 ffi
 
        ((w)
 	(set! step (1+ step))
-	(next-data) ;; read another path		  
+	(next-data) ;; read another path
+	
 	)
        ((s) (set! step (1- step)) (when (< step 0) (set! step 0)))		 
        ((down) (set! out-y (1+ out-y)))
@@ -1081,4 +1093,4 @@ ttf fonts to do
   (viz))
 
 
-;;(run)
+(run)
