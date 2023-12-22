@@ -1,88 +1,76 @@
-#|
 
-day16
+(import scheme)
 
-|#
-(use-modules (system base compile))
+(import simple-exceptions)
 
-;;(default-optimization-level 9)
-(default-optimization-level 1)
-
-
-(use-modules (ice-9 textual-ports))
-(use-modules (ice-9 format)) ;; format common lisp 
-(use-modules (ice-9 pretty-print)) ;; pretty-print
+(import (chicken string))
+(import (chicken pretty-print))
 (define pp pretty-print)
-;;(use-modules (rnrs)) ;; assert 
-(use-modules (srfi srfi-1)) ;; first second third ...
-(use-modules (srfi srfi-2)) ;; first second third ...
-(use-modules (statprof)) ;; statistical profiler
 
-(use-modules ((rnrs)
-	     ;;#:select open-pipe close-pipe)
-	      #:renamer (symbol-prefix-proc 'rnrs:)))
+(import (chicken io))
+(import (chicken format))
+(import (chicken sort))
+(import (chicken file))
+(import (chicken process-context))
+;; (change-directory "day15")
+;; (current-directory)
+
+(import procedural-macros)
+(import regex)
+
+(import simple-md5)
+(import simple-loops)
+
+(import srfi-69)
+;; hash-table-ref  hash key thunk
+;; hash-table-set! hash key val
+
+;; sudo chicken-install srfi-178
+(import srfi-178)
+;; srfi-178 provides bit-vectors
 
 
-;; assert
+;; (import-for-syntax
+;;   (only checks <<)
+;;   (only bindings bind bind-case)
+;;   (only procedural-macros macro-rules with-renamed-symbols once-only))
 
-;; regular expression
-(use-modules (ice-9 regex)) 
+(import sequences)
 
-;; pattern matcher ?
-(use-modules (ice-9 match))
+(import srfi-1)
 
-;; binary io -- dont know if this helped any as read-u8 is for reading ints no??
-(use-modules (ice-9 binary-ports))
+(import matchable)
 
-;; r7rs 
-(use-modules (scheme base))
+;;--------------------------------------
 
-;; --------------------- macros --------------------------
-(define-macro (dolist varls . body)
-  (let* ((fn (gensym "fn"))
-	 (xs (gensym "xs"))
-	 (var (car varls))
-	 (ls  (car (cdr varls))))
-    `(letrec ((,fn (lambda (,xs)
-		     (cond
-		      ((null? ,xs) #f)
-		      (#t (let ((,var (car ,xs)))
-			    ,@body
-			    (,fn (cdr ,xs))))))))
-       (,fn ,ls))))
+;; change input file ! 
+(define (get-input) (call-with-input-file "input"
+		      (lambda (port)
+			(read port))))
 
-;; --------------------- while ----------------------------
+(define input (get-input))
 
-(defmacro while (condition . body)
-  (let ((lup (gensym "loop")))
-    `(letrec ((,lup (lambda ()
-		      (when ,condition
-			,@body
-			(,lup)))))
-       (,lup))))
+(define example #f)
 
-;; (let ((i 0))
-;;   (while (< i 10)
-;;     (format #t " i = ~a ~%" i )
-;;     (set!  i (+ i 1))))
+;;(set! input example)
 
-;; --------------------- macros --------------------------
+(define (1+ x) (+ x 1))
+(define (1- x) (- x 1))
 
-;; (chdir "day16")
-;; (getcwd)
+(define (10+ x) (+ x 10))
+(define (10- x) (- x 10))
 
-#|
-read lines of input
-|#
+(define rest cdr)
 
-(define fails 0)
+;;------------------------------------------
+
 
 (define (read-all f)
   (call-with-input-file f
     (lambda (port)
       (let ((lines '()))
 	(letrec ((foo (lambda ()
-			(let ((line (get-line port)))
+			(let ((line (read-line port)))
 			  (format #t "~a ~%" line)
 			  (cond
 			   ((eof-object? line) (reverse lines))
@@ -217,7 +205,7 @@ incentivise moving down and to right over left and up
   (define (visited? x y path)
     (member `(,x ,y) path))
 
-  (define output-port (open-output-file filename))
+  (define output-port #f)
   
   (define (report x y path cost step)
     (format output-port "~a~%" `(path ,path id ,id cost ,cost))
@@ -287,7 +275,12 @@ incentivise moving down and to right over left and up
       (move-right x y n path cost step)
       (move-down x y n path cost step)))
 
-  (start))
+  (call-with-output-file filename (lambda (port)
+				    (set! output-port port)
+				    (start)))
+
+  )
+
 
 
 
