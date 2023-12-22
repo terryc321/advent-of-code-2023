@@ -28,7 +28,6 @@ always-on-top                 SDL_WINDOW_ALWAYS_ON_TOP           (SDL 2.0.5+)
 these on the left are the symbols to use for chcken scheme !!!
 
 
-
 |#
 
 (import scheme)
@@ -98,7 +97,7 @@ these on the left are the symbols to use for chcken scheme !!!
 (define mouse-messages 0)
 
 (define small-font #f)
-(define small-font-size 12)
+(define small-font-size 30)
 
 (define large-font #f)
 (define large-font-size 50)
@@ -117,6 +116,10 @@ these on the left are the symbols to use for chcken scheme !!!
 (define text #f)
 (define surface #f)
 (define texture #f)
+
+(define text-texture #f)
+(define text-surface #f)
+
 
 ;;----- 2nd window
 
@@ -239,22 +242,6 @@ like ticks milliseconds since sdl started
 
 
 |#
-
-(define (draw-text ren font str x y)
-  (let* ((surface (render-font-solid font str (make-color 255 0 0 0)))
-	 (wid (surface:surface-width surface))
-	 (hgt (surface:surface-height surface))
-	 (texture (surface->texture ren surface)))
-    (render-copy ren texture #:srcrect `(0 0 ,wid ,hgt)#:dstrect `(,x ,y ,wid ,hgt))
-    ;;(format #t "surface = ~a ~%" surface))
-    ))
-
-
-(define (draw-large-text ren str x y)
-  (draw-text ren large-font str x y))
-
-(define (draw-small-text ren str x y)
-  (draw-text ren small-font str x y))
 
 
 #|
@@ -533,7 +520,7 @@ first try draw a star pattern
        (set! path-data path)
        (set! id-data id)
        (set! cost-data cost)
-       (format #t "path id ~a~%path ~a ~%" id path-data)
+       ;;(format #t "path id ~a~%path ~a ~%" id path-data)
        )
       )))
 
@@ -912,41 +899,26 @@ complete re-write based on how chicken scheme implements sdl2 ffi
 
 |#
 
-(define (redraw!)
-  
-  ;; all white
-  (sdl2:render-draw-color-set! renderer (sdl2:make-color 255 255 255))
-  (sdl2:render-clear! renderer)
-  ;; black square
-  (sdl2:render-draw-color-set! renderer (sdl2:make-color 0 0 0))
-  (sdl2:render-fill-rect! renderer (sdl2:make-rect 0 0 50 50))
-  ;; blue square 50 x 50 wide 
-  (sdl2:render-draw-color-set! renderer (sdl2:make-color 0 0 255))
-  (sdl2:render-fill-rect! renderer (sdl2:make-rect 250 250 50 50))
-  ;; red square
-  (sdl2:render-draw-color-set! renderer (sdl2:make-color 255 0 0))
-  ;; red square outlines
-  (sdl2:render-draw-rect! renderer (sdl2:make-rect 350 350 50 50))
-  (sdl2:render-draw-rect! renderer (sdl2:make-rect 400 350 50 50))
-  (sdl2:render-draw-rect! renderer (sdl2:make-rect 450 350 50 50))
-  ;; draw the board
-  (draw-all-board-spots renderer)
-  ;; draw hot spots
-  (draw-all-hot-spots renderer)
-  
-  ;; show on window
-  (sdl2:render-present! renderer)
-  )  ;; ------ render! -------------
-
 
 
 (define (handle-event ev exit-main-loop!)
   (case (sdl2:event-type ev)
     ;; Window exposed, etc.
     ((window)
+     (case (sdl2:window-event-event ev)
+       ((size-changed)
+	(call-with-values
+	    (lambda () (sdl2:window-size window))
+	  (lambda (w h) (set! window-height h)
+		  (set! window-width w)))))
+     
      (sdl2:render-present! renderer) ;; try this instead
      ;;(sdl2:update-window-surface! window)
      )
+    ;; window resize
+    ;; set window-height window-width
+
+    
     ;; User requested app quit (e.g. clicked the close button).
     ((quit)   (exit-main-loop! #t))
     ;; Keyboard key pressed
@@ -1011,6 +983,77 @@ complete re-write based on how chicken scheme implements sdl2 ffi
     ))
 ;; ---------- handle event ------------
 
+
+(define (draw-text ren font str x y)
+  (let* ((text-surface (ttf:render-text-solid font str (sdl2:make-color 255 0 0 255)))
+	 (texture (sdl2:create-texture-from-surface ren text-surface)))
+    (call-with-values (lambda () (ttf:size-text font text))
+      (lambda (w h)
+	(sdl2:render-copy! ren texture #f (sdl2:make-rect x y w h))))))
+
+;; optional args ??
+;; #:srcrect #f ;;(sdl2:make-rect 0 0 w h)
+;; #:dstrect (sdl2:make-rect x y w h))))))
+
+
+(define (draw-large-text ren str x y)
+  (draw-text ren large-font str x y))
+
+(define (draw-small-text ren str x y)
+  (draw-text ren small-font str x y))
+
+
+
+(define (redraw!)
+  
+  ;; all white
+  (sdl2:render-draw-color-set! renderer (sdl2:make-color 255 255 255))
+  (sdl2:render-clear! renderer)
+  
+  ;; black square
+  (sdl2:render-draw-color-set! renderer (sdl2:make-color 0 0 0))
+  (sdl2:render-fill-rect! renderer (sdl2:make-rect 0 0 50 50))
+  ;; blue square 50 x 50 wide 
+  (sdl2:render-draw-color-set! renderer (sdl2:make-color 0 0 255))
+  (sdl2:render-fill-rect! renderer (sdl2:make-rect 250 250 50 50))
+  ;; red square
+  (sdl2:render-draw-color-set! renderer (sdl2:make-color 255 0 0))
+  ;; red square outlines
+  (sdl2:render-draw-rect! renderer (sdl2:make-rect 350 350 50 50))
+  (sdl2:render-draw-rect! renderer (sdl2:make-rect 400 350 50 50))
+  (sdl2:render-draw-rect! renderer (sdl2:make-rect 450 350 50 50))
+  ;; draw the board
+  (draw-all-board-spots renderer)
+  ;; draw hot spots
+  (draw-all-hot-spots renderer)
+
+
+  
+  ;; call with values  takes two thunks - procedures no args
+  ;;   (call-with-values (lambda () ..) (lambda () ...))
+  ;;
+  #|
+  (call-with-values (lambda () (ttf:size-text large-font text))
+    (lambda (w h)
+      ;;(format #t "size width ~a : height ~a ~%" w h )
+      (sdl2:render-copy! renderer text-texture (sdl2:make-rect 0 0 w h)
+			 (sdl2:make-rect 20 25 w h))))
+|#
+  (draw-small-text  renderer (format #f "hi-i am small text ~a" (if (null? path-data)
+								    '()
+								    (car path-data)))
+		    60 10)
+   
+        
+
+  ;; text-texture is hello world writ large
+  ;;(sdl2:render-copy! renderer text-texture #f #f) 
+  
+  ;; show on window
+  (sdl2:render-present! renderer)
+  )  ;; ------ render! -------------
+
+
 ;; just loop 
 (define (main-loop)
   (define event (sdl2:make-event))
@@ -1018,9 +1061,19 @@ complete re-write based on how chicken scheme implements sdl2 ffi
 	     (redraw!)
 	     ;; Loop forever (until exit-main-loop! is called).
 	     (do-while #t
+		       (next-data)
+		       (redraw!)
 
 		       ;; Wait for the next event, then handle it.
-		       (handle-event (sdl2:wait-event! event) exit-main-loop!)))))
+		       (handle-event (sdl2:wait-event! event) exit-main-loop!)
+		       #|
+		       (let ((events (sdl2:peek-events 1)))
+			 (cond
+			  ((null? events) #f)
+			  (#t (set! event (car(sdl2:get-events! 1)))
+			      (handle-event event exit-main-loop!))))
+		       |#
+		       ))))
 
 
 
@@ -1041,7 +1094,7 @@ ttf fonts to do
   ;;(define font (ttf:open-font "ComicNeue-Regular.otf" 40))
   (set! large-font (ttf:open-font "/home/terry/advent-of-code/2023/day16/ProggyClean.ttf" large-font-size))  
   (set! small-font (ttf:open-font "/home/terry/advent-of-code/2023/day16/ProggyClean.ttf" small-font-size))  
-  (set! text "Hello, World!")
+  
   ;;(define-values (w h) (ttf:size-utf8 font text))
   ;;(define window (sdl2:create-window! text 'centered 'centered w h))
   (set! window (sdl2:create-window! "Hello, World!"
@@ -1051,6 +1104,12 @@ ttf fonts to do
 				    ))
   ;;(set! surface (sdl2:window-surface window))
   (set! renderer (sdl2:create-renderer! window))
+
+  (set! text "Hello, World!")
+  (set! text-surface (ttf:render-text-solid large-font text (sdl2:make-color 255 0 0 255)))
+  (set! text-texture (sdl2:create-texture-from-surface renderer text-surface))
+  
+  
   ;;(set! renderer (sdl2:create-software-renderer! surface))
   ;;(set! texture (create-texture-from-surface renderer surface))
   ;;;(set! texture (create-texture renderer format?? access?? 600 400))
@@ -1085,7 +1144,6 @@ ttf fonts to do
   (main-loop)
   (sdl2:quit!)
   )
-
 
 
 (define (run)

@@ -13,13 +13,6 @@
 
 
 
-
-
-
-
-
-
-
 (import scheme)
 
 (import simple-exceptions)
@@ -213,9 +206,19 @@ incentivise moving down and to right over left and up
 curiously it will create a wall around the finish point
 then go off searching in the weeds forever never being able to complete task
 
+probbly a good case for logical thinking
+how can eliminate search space that will never lead to solutions looking for ?
+
+
 
 
 |#
+
+(define solutions '())
+(define best-solution '())
+(define best-cost 99999999999999999999)
+(define best-step 99999999999999999999)
+
 
 (define (puzzle vv filename)
   (define id 0)
@@ -232,13 +235,24 @@ then go off searching in the weeds forever never being able to complete task
     (member `(,x ,y) path))
 
   (define output-port #f)
+
+  (define (solution! path cost step)
+    (cond
+     ((< cost best-cost)
+      (format #t "~%~%***best solution so far *** ~% *** path ~%~a~%***cost ~a~%~%" path cost)
+      (set! best-cost cost)
+      (set! best-solution path)
+      (set! best-step step))))
+
   
   (define (report x y path cost step)
     (format output-port "~a~%" `(path ,path id ,id cost ,cost))
     (set! id (1+ id)))
 
-  (define (dead-end p)
-    (member p paradoxes equal?))
+  ;; going to try guess how long optiml path is
+  ;; no real idea how to solve this yet ...
+  (define (dead-end? p) #f)
+;;    (> (length p) 27))
   
   ;; how to prevent a walled off search pattern ??
   
@@ -250,7 +264,7 @@ then go off searching in the weeds forever never being able to complete task
       (let ((cost2 (+ cost (get-xy vv x y))))
 	(report x y path cost step)
 	(cond
-	 ((finish-line? x y) (format #t "path ~a : cost ~a ~%" path cost))
+	 ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
 	 ((visited? x y path) #f)
 	 (#t
 	  (when (not (= n 0)) (move-left (- x 1) y (- n 1) (cons `(,x ,y) path) cost2 (1+ step)))
@@ -266,7 +280,7 @@ then go off searching in the weeds forever never being able to complete task
       (let ((cost2 (+ cost (get-xy vv x y))))	
 	(report x y path cost step)
 	(cond
-	 ((finish-line? x y) (format #t "path ~a : cost ~a ~%" path cost))
+	 ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
 	 ((visited? x y path) #f)
 	 (#t
 	  (move-down x (+ y 1) 2 (cons `(,x ,y) path) cost2 (1+ step))
@@ -282,11 +296,11 @@ then go off searching in the weeds forever never being able to complete task
       (let ((cost2 (+ cost (get-xy vv x y))))
 	(report x y path cost step)
 	(cond
-	 ((finish-line? x y) (format #t "path ~a : cost ~a ~%" path cost))
+	 ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
 	 ((visited? x y path) #f)
 	 (#t
-	  (move-left (- x 1) y 2 (cons `(,x ,y) path) cost2 (1+ step))
 	  (move-right (+ x 1) y 2 (cons `(,x ,y) path) cost2 (1+ step))
+	  (move-left (- x 1) y 2 (cons `(,x ,y) path) cost2 (1+ step))
 	  (when (not (= n 0)) (move-up x (- y 1) (- n 1) (cons `(,x ,y) path) cost2 (1+ step)))))))))
   
   (define (move-down x y n path cost step) 
@@ -297,7 +311,7 @@ then go off searching in the weeds forever never being able to complete task
       (let ((cost2 (+ cost (get-xy vv x y))))
 	(report x y path cost step)
 	(cond
-	 ((finish-line? x y) (format #t "path ~a : cost ~a ~%" path cost))
+	 ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
 	 ((visited? x y path) #f)
 	 (#t	
 	  (when (not (= n 0)) (move-down x (+ y 1) (- n 1) (cons `(,x ,y) path) cost2 (1+ step)))
