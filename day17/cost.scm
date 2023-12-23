@@ -110,8 +110,11 @@ decide if move take me further away from where i want to be ?
   (list->vector (map (lambda (x) (list->vector (map char->int (string->list x))))  v)))
 
 (define input  (list->grid (read-all "input")))
+;;(define cost-input  (list->grid (read-all "input")))
+
 
 (define example (list->grid (read-all "example")))
+(define cost-example (list->grid (read-all "example")))
 
 ;;(define example2 (list->grid (read-all "example2")))
 
@@ -124,104 +127,70 @@ decide if move take me further away from where i want to be ?
 (define (grid-height vv)
   (vector-length vv))
 
+(define (set-xy! vv x y z)
+  (vector-set! (vector-ref vv y) x z))
 
-;; ---------------------------------
-;;(char->int #\1)
+  
 
+;;--------------------------------------
 #|
 
-at most 3 steps in direction before have to turn left or right
+solving the example only
 
-         |
-X->1->2->3
-         |
+cost-example is a grid same size as example
+it simply needs filled with '() empty list
+as we find a lower cost way to reach a particular square
+we label that square with ((cost path-to-square))
 
-left or right
+each square has a cost and that is accounted for
+optimal path does not revisit same square so
+we do not concern ourselves with that
 
-right 2
-right 1
-right 0
-when zero can no longer go right , must choose up or down
+state space search 0,0 to 12,12 inclusive
+(iota 13)
 
-right -> up / down
-up -> left / right
-down -> left or right
-left -> up / down
+next-states
 
-start at 0 0
-when enter square take its value and add to sum presumably
-
-right x y n
-if n = 0 then up x y 2
-if n = 0 then down x y 2
-
-at start can take 3 steps either right or down
-
---------------------------------------------
-0,0
-how about a random walker
-he can go up -Y , right +X , down +Y , left -X
-then put constraints on that walk 
-
-vv : problem vector
-x coordinate
-y
-path coordinates passed through
-
-- like to stay on board
-x : 0 to width-1
-y : 0 to height-1
-
-1) reduce parameters in calls by having them in scope in outer procedure
-
-constraint 1 : on-board
-constraint 2 : no walking backwards
-initially path is empty
-identify walking backwards as if position is opposite direction moving
-so need to know direction moving
-either explicit or by being executed in a moving procedure
-know moving right if in moving-right procedure ...
-
-may miss the final cost of last square , but since that is missing from all paths
-the minimum path will still be the minimum path
-
-lack of real time debugging support
-lack of gui code
-lack of inspector to see what code is doing
-lack of visaulisation tools
-lack of macro writing support
-lack of static checking
-lack of theorem proving
-lack of reasoning tools
-lack of model checking
-lack of code writing tools
-lack of linter
-lack of mathematical rigour
-lack of full complete reliable documentation 
-
-
-if already reached a place we have been to cut the search off
-
-having to check visited? x y on each iteration
-can we not produce a way to generate that guarantees we do need to check is somewhere has been visited
-
-incentivise moving down and to right over left and up
-
-curiously it will create a wall around the finish point
-then go off searching in the weeds forever never being able to complete task
-
-probbly a good case for logical thinking
-how can eliminate search space that will never lead to solutions looking for ?
-
-
-
+bootstrap process
+x y cost path
 
 |#
 
-(define solutions '())
-(define best-solution '())
-(define best-cost 99999999999999999999)
-(define best-step 99999999999999999999)
+;; flatten cost-example
+(define (flatten-cost-example)
+  (do-list (i (iota 13))
+	   (do-list (j (iota 13))
+		    (set-xy! cost-example i j '()))))
+
+(define (flatten-cost-input)
+  (do-list (i (iota 13))
+	   (do-list (j (iota 13))
+		    (set-xy! cost-input i j '()))))
+
+
+;;(define flatten-once #t)
+;;(flatten-cost-example)
+
+(define (initial-state)
+  '((0 0 0 '())))
+
+;; breadth first search ?
+;; may need to apply append to flatten them out
+(define (next-states states)
+  (map next-state! states))
+
+;; where state is current x ,y  cost and previous squares path to reach 
+(define (next-state state)
+  #t)
+
+
+(define (reset)
+  (flatten-cost-example))
+
+
+
+
+
 
 
 (define (puzzle vv filename)
@@ -240,19 +209,50 @@ how can eliminate search space that will never lead to solutions looking for ?
 
   (define output-port #f)
 
-  (define (solution! path cost step)
-    (cond
-     ((< cost best-cost)
-      (format #t "~%~%***best solution so far *** ~% *** path ~%~a~%***cost ~a~%~%" path cost)
-      (set! best-cost cost)
-      (set! best-solution path)
-      (set! best-step step))))
+  
+  (define (solution! path cost step) #f)  
+    ;; (cond
+    ;;  ((< cost best-cost)
+    ;;   (format #t "~%~%***best solution so far *** ~% *** path ~%~a~%***cost ~a~%~%" path cost)
+    ;;   (set! best-cost cost)
+    ;;   (set! best-solution path)
+    ;;   (set! best-step step))))
+  
+  (define (report x y path cost step) #f)
+  
+    ;; (format output-port "~a~%" `(path ,path id ,id cost ,cost))
+    ;; (set! id (1+ id)))
+
 
   
-  (define (report x y path cost step)
-    (format output-port "~a~%" `(path ,path id ,id cost ,cost))
-    (set! id (1+ id)))
+  ;; if path is first ever to reach square then record that as best known
+  ;; if path is same as another path , may be equally optimal
+  ;; if path is higher cost than previous path , suboptimal , definitely poor path  
+  (define (poor? x y path cost step)
+    (let ((known (get-xy cost-example x y)))
+      (cond
+       ((null? known)
+	(set-xy! cost-example x y `((,cost ,path)))
+	(format #t "found first for ~a , ~a  at cost ~a ~%" x y cost)
+	#f)
+       (#t
+	;;(format #t "known = [~a]~%" known)
+	(let ((known-cost (car (car known))))
+	  (cond
+	   ((< cost known-cost)
+	    (set-xy! cost-example x y `((,cost ,path)))
+	    (format #t "found new best for for ~a , ~a  at cost ~a ~%" x y cost)	    
+	    #f)
+	   ((= cost known-cost)
+	    (set-xy! cost-example x y (cons `(,cost ,path) known))
+	    #f)
+	   (#t #t)))))))
 
+
+  
+       
+
+  
   ;; going to try guess how long optiml path is
   ;; no real idea how to solve this yet ...
   (define (dead-end? p) #f)
@@ -265,11 +265,11 @@ how can eliminate search space that will never lead to solutions looking for ?
      ((awol? x y) #f)
      ((dead-end? path) #f)
      (#t
-      (let ((cost2 (+ cost (get-xy vv x y))))
-	(report x y path cost step)
+      (let ((cost2 (+ cost (get-xy vv x y))))	
 	(cond
-	 ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
-	 ((visited? x y path) #f)
+	 ((poor? x y path cost2 step) #f)
+	 ;; ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
+	 ;; ((visited? x y path) #f)
 	 (#t
 	  (when (not (= n 0)) (move-left (- x 1) y (- n 1) (cons `(,x ,y) path) cost2 (1+ step)))
 	  (move-down x (+ y 1) 2 (cons `(,x ,y) path) cost2 (1+ step))
@@ -282,10 +282,10 @@ how can eliminate search space that will never lead to solutions looking for ?
      ((dead-end? path) #f)
      (#t
       (let ((cost2 (+ cost (get-xy vv x y))))	
-	(report x y path cost step)
 	(cond
-	 ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
-	 ((visited? x y path) #f)
+	 ((poor? x y path cost2 step) #f)
+	 ;; ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
+	 ;; ((visited? x y path) #f)
 	 (#t
 	  (move-down x (+ y 1) 2 (cons `(,x ,y) path) cost2 (1+ step))
 	  (when (not (= n 0)) (move-right (+ x 1) y (- n 1) (cons `(,x ,y) path) cost2 (1+ step)))
@@ -298,10 +298,10 @@ how can eliminate search space that will never lead to solutions looking for ?
      ((dead-end? path) #f)
      (#t
       (let ((cost2 (+ cost (get-xy vv x y))))
-	(report x y path cost step)
 	(cond
-	 ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
-	 ((visited? x y path) #f)
+	 ((poor? x y path cost2 step) #f)
+	 ;; ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
+	 ;; ((visited? x y path) #f)
 	 (#t
 	  (move-right (+ x 1) y 2 (cons `(,x ,y) path) cost2 (1+ step))
 	  (move-left (- x 1) y 2 (cons `(,x ,y) path) cost2 (1+ step))
@@ -313,10 +313,10 @@ how can eliminate search space that will never lead to solutions looking for ?
      ((dead-end? path) #f)
      (#t
       (let ((cost2 (+ cost (get-xy vv x y))))
-	(report x y path cost step)
 	(cond
-	 ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
-	 ((visited? x y path) #f)
+	 ((poor? x y path cost2 step) #f)
+	 ;; ((finish-line? x y) (solution! (cons `(,x ,y) path) cost2 step))
+	 ;; ((visited? x y path) #f)
 	 (#t	
 	  (when (not (= n 0)) (move-down x (+ y 1) (- n 1) (cons `(,x ,y) path) cost2 (1+ step)))
 	  (move-right (+ x 1) y 2 (cons `(,x ,y) path) cost2 (1+ step))
@@ -328,9 +328,16 @@ how can eliminate search space that will never lead to solutions looking for ?
       (move-right x y n path cost step)
       (move-down x y n path cost step)))
 
+  
+  #|
   (call-with-output-file filename (lambda (port)
 				    (set! output-port port)
-				    (start)))
+  (start)))
+  |#
+  (start)
+
+  ;; if ever do solve it
+  (pp cost-example)
 
   )
 
@@ -346,8 +353,13 @@ how can eliminate search space that will never lead to solutions looking for ?
   (puzzle input "part1.out"))
 
 
-;; start with 
+(flatten-cost-example)
 (example-1)
+
+
+
+;; start with 
+;;(example-1)
 
 
 
