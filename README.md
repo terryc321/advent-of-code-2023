@@ -12,6 +12,7 @@ test update from new mobo
 
 ![day 17 part one disaster](https://github.com/terryc321/advent-of-code-2023/blob/main/day17/screenshot-2023-12-22.jpg?raw=true)
 
+![day 17 part two disaster](https://github.com/terryc321/advent-of-code-2023/blob/main/day17/solution.png?raw=true)
 
 
 
