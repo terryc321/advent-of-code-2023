@@ -1,0 +1,314 @@
+#|
+
+
+|#
+
+;; ----------------------------
+(import scheme)
+(import simple-exceptions)
+(import (chicken string))
+(import (chicken pretty-print))
+(import (chicken io))
+(import (chicken format))
+(import (chicken sort))
+(import (chicken file))
+(import (chicken process-context))
+;; (change-directory "day17")
+;; (get-current-directory)
+(import procedural-macros)
+(import regex)
+(import simple-md5)
+(import simple-loops)
+(import srfi-69)
+;; hash-table-ref  hash key thunk
+;; hash-table-set! hash key val
+;; sudo chicken-install srfi-178
+(import srfi-178)
+;; srfi-178 provides bit-vectors
+;; (import-for-syntax
+;;   (only checks <<)
+;;   (only bindings bind bind-case)
+;;   (only procedural-macros macro-rules with-renamed-symbols once-only))
+(import sequences)
+(import srfi-1)
+(import matchable)
+(define pp pretty-print)
+
+;;--------------------------------------
+(define *vec*
+#(
+#(2 4 1 3 4 3 2 3 1 1 3 2 3)
+#(3 2 1 5 4 5 3 5 3 5 6 2 3)
+#(3 2 5 5 2 4 5 6 5 4 2 5 4)
+#(3 4 4 6 5 8 5 8 4 5 4 5 2)
+#(4 5 4 6 6 5 7 8 6 7 5 3 6)
+#(1 4 3 8 5 9 8 7 9 8 4 5 4)
+#(4 4 5 7 8 7 6 9 8 7 7 6 6)
+#(3 6 3 7 8 7 7 9 7 9 6 5 3)
+#(4 6 5 4 9 6 7 9 8 6 8 8 7)
+#(4 5 6 4 6 7 9 9 8 6 4 5 3)
+#(1 2 2 4 6 8 6 8 6 5 5 6 3)
+#(2 5 4 6 5 4 8 8 8 7 7 3 5)
+#(4 3 2 2 6 7 4 6 5 5 5 3 3)
+))
+
+;; 1 1 based 2d access
+(define (xy x y)
+  (vector-ref (vector-ref *vec* (- y 1)) (- x 1)))
+
+;; lookup score at x y
+(define (score-xy x y)
+  (vector-ref (vector-ref *score* (- y 1)) (- x 1)))
+
+;; change score at x y
+(define (score-xy! x y z)
+  (vector-set! (vector-ref *score* (- y 1)) (- x 1) z))
+
+(define (vec-height v)
+  (vector-length v))
+
+(define (vec-width v)
+  (vector-length (vector-ref v 0)))
+
+(define (copy-vec v)
+  (let ((height (vec-height v))
+	(width (vec-width v)))
+    (let ((v2 (make-vector height #f)))
+      (letrec ((foo (lambda (n m)
+		      (cond
+		       ((>= n m) v2)
+		       (#t (vector-set! v2 n (make-vector width #f))
+			   (foo (+ n 1) m))))))
+	(foo 0 height)))))
+;; -----------------------------
+
+;; hash table 
+(define *closed* #f)
+(define *pending* #f)
+(define *open* #f)
+(define *score* #f)
+
+(define (keep? x y score) #t)
+
+(define *height* (vec-height *vec*))
+(define *width* (vec-width *vec*))
+
+(define (onboard? x y)
+  (and (>= x 1) (<= x *width*)
+       (>= y 1) (<= y *height*)))
+
+(define (next-states states)
+  (apply append (map next-state states)))
+
+(define (next-state state)
+  (match state
+    ((x y score m1 m2 m3)
+     (cond
+      ((not (onboard? x y)) #f)
+      (#t (next-state2 x y score m1 m2 m3))))))
+
+(define-er-macro (macro-feedback)
+  %
+  `(begin
+     ;; (format #t "score ~%")
+     ;; (pp *score*)
+     ;; (format #t "~%")
+     ;; (format #t "position (~a , ~a) ~%~%" x y)
+     (when
+	 (and (= x *width*) (= y *height*))
+       (format #t "(~a,~a) => score ~a ~%" x y score))     
+     ))
+
+
+
+(define (next-state2 x y score m1 m2 m3)
+  ;; some feedback here ?
+  (macro-feedback)
+  (cond
+   ((eq? m1 'left) (next-state-left x y score m1 m2 m3))
+   ((eq? m1 'right) (next-state-right x y score m1 m2 m3))
+   ((eq? m1 'up) (next-state-up x y score m1 m2 m3))
+   ((eq? m1 'down) (next-state-down x y score m1 m2 m3))
+   (#t (error 'next-state2))))
+
+;; next state left : 
+;; carry on going left
+;; turn right go up
+;; turn left go down
+;; history of moves
+
+;; using a prefix %
+;; 
+(define-er-macro (macro-xyz)
+  %
+  `(,%list x y z))
+
+(let ((x 0)(y 1)(z 2))
+  (macro-xyz))
+
+#|
+explicit-renaming macro
+prefix %
+,%when ,%list ,%let
+|#
+(define-er-macro (macro-go-left)
+  %
+  `(let* ((x2 (- x 1))(y2 y))
+     ;; rather than onboard? more generic test x against 0 width then y against 0 height
+     ;; specific x2 is zero or more
+     (when (>= x2 1)
+       ;; has this square been visited already - if so cannot be optimal solution
+       (let ((seen (score-xy x2 y2)))
+	 (when (not seen)
+	   ;; not seen - 
+	   (let ((new-score (+ score (xy x2 y2))))
+	     ;; record new score
+	     (score-xy! x2 y2 new-score)
+	     ;; recurse
+	     (next-state2 x2 y2 new-score 'left m1 m2)
+	     ;; undo record
+	     (score-xy! x2 y2 #f)))))))
+
+;;(pp (macro-go-left))
+
+;; right is positive x
+(define-er-macro (macro-go-right)
+  %
+  `(let* ((x2 (+ x 1))(y2 y))
+     ;; rather than onboard? more generic test x against 0 width then y against 0 height
+     ;; specific x2 is zero or more
+     (when (<= x2 *width*)
+       ;; has this square been visited already - if so cannot be optimal solution
+       (let ((seen (score-xy x2 y2)))
+	 (when (not seen)
+	   ;; not seen - 
+	   (let ((new-score (+ score (xy x2 y2))))
+	     ;; record new score
+	     (score-xy! x2 y2 new-score)
+	     ;; recurse
+	     (next-state2 x2 y2 new-score 'right m1 m2)
+	     ;; undo record
+	     (score-xy! x2 y2 #f)))))))
+
+
+
+;; down is positive y 
+(define-er-macro (macro-go-down)
+  %
+  `(let* ((x2 x)(y2 (+ y 1)))
+     ;; rather than onboard? more generic test x against 0 width then y against 0 height
+     ;; specific x2 is zero or more
+     (when (<= y2 *height*)
+       ;; has this square been visited already - if so cannot be optimal solution
+       (let ((seen (score-xy x2 y2)))
+	 (when (not seen)
+	   ;; not seen - 
+	   (let ((new-score (+ score (xy x2 y2))))
+	     ;; record new score
+	     (score-xy! x2 y2 new-score)
+	     ;; recurse
+	     (next-state2 x2 y2 new-score 'down m1 m2)
+	     ;; undo record
+	     (score-xy! x2 y2 #f)))))))
+  
+;; up is negative y
+(define-er-macro (macro-go-up)
+  %
+  `(let* ((x2 x)(y2 (- y 1)))
+     ;; rather than onboard? more generic test x against 0 width then y against 0 height
+     ;; specific x2 is zero or more
+     (when (>= y2 1)
+       ;; has this square been visited already - if so cannot be optimal solution
+       (let ((seen (score-xy x2 y2)))
+	 (when (not seen)
+	   ;; not seen - 
+	   (let ((new-score (+ score (xy x2 y2))))
+	     ;; record new score
+	     (score-xy! x2 y2 new-score)
+	     ;; recurse
+	     (next-state2 x2 y2 new-score 'up m1 m2)
+	     ;; undo record
+	     (score-xy! x2 y2 #f)))))))
+
+  
+
+
+(define (next-state-left x y score m1 m2 m3)
+  ;; left
+  (cond
+   ((and (eq? m1 'left) (eq? m2 'left) (eq? m3 'left)) #f)
+   (#t  ;; can go left
+    (macro-go-left)))
+  
+  (macro-go-down)
+  (macro-go-up))
+
+  
+;; next state up : 
+;; carry on going up
+;; turn left go left
+;; turn right go right
+(define (next-state-up x y score m1 m2 m3)
+  ;; go up
+  (cond
+   ((and (eq? m1 'up) (eq? m2 'up) (eq? m3 'up)) #f)
+   (#t
+    (macro-go-up)))
+  (macro-go-left)
+  (macro-go-right))
+
+
+;; next state down : 
+;; carry on going down
+;; turn left go right
+;; turn right go left
+(define (next-state-down x y score m1 m2 m3)
+    ;; check go down
+    (cond
+     ((and (eq? m1 'down) (eq? m2 'down) (eq? m3 'down)) #f)
+     (#t
+      (macro-go-down)))
+    (macro-go-left)
+    (macro-go-right))
+
+;; next state right : 
+;; carry on going right
+;; turn right go down
+;; turn left go up
+(define (next-state-right x y score m1 m2 m3)
+  ;; check go right
+  (cond
+   ((and (eq? m1 'right) (eq? m2 'right) (eq? m3 'right)) #f)
+   (#t
+    (macro-go-right)))
+  (macro-go-up)
+  (macro-go-down))
+
+
+(define (solve)
+  (set! *score* (copy-vec *vec*))
+  ;; go right
+  (next-state2 2 1 (xy 2 1) 'right #f #f)
+  ;; go down
+  (next-state2 1 2 (xy 1 2) 'down #f #f)  
+  )
+
+
+
+(solve)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
