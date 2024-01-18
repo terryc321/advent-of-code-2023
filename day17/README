@@ -1,402 +1,166 @@
 
-****** [ cost-example.sml ]       example 2d matrix , cost 2d matrix
+;; -----------------------
+incremental improvement
 
-use "cost-example.sml";
-run () ;
+x x
+  x x
+    x x
+      x x
+        x x   etc...
 
+1 2 3 right , 1 2 3 up / down , 
+;;------------------------
 
-****** [ test2.sml ]      the move left , right , up , down 
+idea of jigsaws ?
 
+since know if take three steps forward then need to turn 90 degrees
 
-convert2.scm      (all)    generates the standard ml move   ... output to  **** [ test2.sml ] *****
-x y c p n
+simplest pieces a single move 
 
+a b
 
+b
+a
 
+a
+b
 
+b a    backwards
 
 
+      ?
+x x x x
+      ?
 
+starting from top left
 
-switched to using standard ml
+here is a piece 
+x x x x
+      x
 
-converted file to sml data structures for ease of writing sml code
+here is another piece
+      x
+      x x x x
 
-1 ) io done - parsed data to sml data structures
+put these two pieces together
 
-2 ) produce empty arrays
+x x x x
+      x
+      x
+      x x x x
 
+but this has reduced number of procedure calls to 2 rather than 9 
 
 
-:: sml cons
-@ sml append operator
-[1,2,3]
-1 :: [1,2,3] => [1,1,2,3]
+x x x x     x x x x     x x x x     x x x x
+      x x x x     x x x x     x x x x     x
+                                          x
+					x x
+                                        x
+					x
+					x x
+					  x
+					  x
+					x x
+                                        x O
 
-(2,3) tuple
 
-[(1,2),(3,4),(2,3)] 
+;;------------------------------------------
+ordering selection of moves based on distance from top left then running first one
+which is furthest , until finds a solution
 
-example of cost 120 with associated path (2,3)->(3,4)->(1,2)
-(120,[(1,2),(3,4),(2,3)]);
+(141 141) : score 1494 : best-so-far 1494 
+(141 141) : score 1492 : best-so-far 1492 
+(141 141) : score 1490 : best-so-far 1490 
+(141 141) : score 1489 : best-so-far 1489 
+(141 141) : score 1488 : best-so-far 1488 
+(141 141) : score 1487 : best-so-far 1487 
+(141 141) : score 1486 : best-so-far 1486 
+(141 141) : score 1485 : best-so-far 1485 
+(141 141) : score 1484 : best-so-far 1484 
+(141 141) : score 1483 : best-so-far 1483 
+(141 141) : score 1482 : best-so-far 1482 
+(141 141) : score 1481 : best-so-far 1481 
+(141 141) : score 1480 : best-so-far 1480 
+(141 141) : score 1479 : best-so-far 1479 
+(141 141) : score 1478 : best-so-far 1478 
+(141 141) : score 1477 : best-so-far 1477 
+(141 141) : score 1476 : best-so-far 1476   *** best so far ....
 
+;;---------------------------------------------
 
-initial state
-(0 , [(0,0)])
-at 0,0 and cost is 0 as puzzle defines 1st square start from has zero cost
+solutions
+./viz-big  # reads from solutions file and displays grpahics on screen
+# seems very slow to update
+# may be because reading one line at a time ?
+# can we read entire file in one go ? -- cant be that big can it ? -- optimal size ??
+# 
+ 
 
-only two ways to move
 
 
-right (0, [(0,0)])
-down  (0, [(0,0)])
-
-* -> 1 -> 2 -> 3!
-! need change direction
-
-n e s w
-u r d l
-
-At x y with cost c , path p , control right left up down
-decide x y cost path right left up down
-
-Exception noDecision
-
-if right > 0 decideRight
-if left > 0 decideLeft
-if up > 0 decideUp
-if down > 0 decideDown
-else raise noDecision
-
-if decide to go right I call
-     decideRight (x + 1) y (cost + cost at x+1,y) 1 (n = 1)
-if decide to go right again
-     decideRight (x + 1) y (cost + cost at x+1,y) n + 1 (n = 2)
-if decide to go left - cannot be going back on myself
-     decideDown x (y + 1) (cost + cost at x y+1) 1
-     decideUp x (y - 1) (cost + cost at x y-1) 1
-
-
-val z = let val a = 4
-          val b = 5
-	   val c = 8
-	   in
-	    a + b + c
-	    end ;
-	    
-
-fun twice ( x : int ): int= x + 2 ;
-
-val add = fn (x : int) => fn (y : int) : int => x + y ;
-
-fun add2 x y = x + y;
-
-(* we can type assert each variable ourselves and provide return value also *)
-fun add3 (x:int) (y:int) : int = x + y;
-
-
-
-(* question then is what is the return type of decideRight ??
-  lets just say unit () 
-*)
-(x,y,c,p,n)
-
-
-(* ======================================================= *)
-
-
-fun decideRight (x:int) (y:int) (c:int) (p:((int * int) list)) (n : int) : () =
- let val _ = decideRight2 x y c p n
-    val _ =  decideRight3 x y c p n
-    val _ =  decideRight4 x y c p n
-   in
-  ()
-end
-
-fun decideRight2 x y c p n =
-    if n < 3 then let val x2 = x + 1
-                           val y2 = y
-			   val c2 = (c + cost (x2,y2))
-			   val p2 = ((x2,y2) :: p)
-			   val n2 = (n + 1)
-		        in
-			 decideRight x2 y2 c2 p2 n2
- 			end
-		else
-		 () ;
-
-fun decideRight3 x y c p n =
-let val x2 = x
-val y2 = y + 1
-val c2 = c + cost x2 y2
-val p2 = (x2,y2) :: p
-val n2 = 1
-in
-decideDown x2 y2 c2 p2 n2
-end ;
-
-fun decideRight4 x y c p n =
- let val x2 = x
-     val y2 = y - 1
-     val c2 = c + cost x2 y2
-		val p2 = (x2,y2) :: p
-		val n2 = 1
-		in
-		decideUp x2 y2 c2 p2 n2
-		end ;
-		
-
-(* =================================================== *)
-
-fun decideLeft (x:int) (y:int) (c:int) (p:((int * int) list)) (n : int) : () =
- let val _ = decideLeft2 x y c p n
-    val _ =  decideLeft3 x y c p n
-    val _ =  decideLeft4 x y c p n
-   in
-  ()
-end
-
-fun decideLeft2 x y c p n =
-    if n < 3 then let val x2 = x + 1
-                           val y2 = y
-			   val c2 = (c + cost (x2,y2))
-			   val p2 = ((x2,y2) :: p)
-			   val n2 = (n + 1)
-		        in
-			 decideLeft x2 y2 c2 p2 n2
- 			end
-		else
-		 () ;
-
-fun decideLeft3 x y c p n =
-let val x2 = x
-val y2 = y + 1
-val c2 = c + cost x2 y2
-val p2 = (x2,y2) :: p
-val n2 = 1
-in
-decideDown x2 y2 c2 p2 n2
-end ;
-
-fun decideLeft4 x y c p n =
- let val x2 = x
-     val y2 = y - 1
-     val c2 = c + cost x2 y2
-		val p2 = (x2,y2) :: p
-		val n2 = 1
-		in
-		decideUp x2 y2 c2 p2 n2
-		end ;
-		
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-------------------------------------------------
-
-viz3.scm ----- latest visualiser
-just a simple game
- w  gets expr from file and displays the path search
- other keys just cause re-render
-
-
-try make a named pipe called output
-
-mkfifo example1.out
-
-mkfifo part1.out
-
-------- 
-to build fun3.scm and viz3.scm 
-bash setup.sh
-
--------
-to run visualiser viz3 running off output of fun3
-bash run.sh
-
-----------------------------------------------------------
-
-any ideas for actually solving it ?
-
-example given is only 13 x 13 grid , still cannot solve it ?
-are we missing something ?
-
-
-we can think of moving
-
-lets define degenerate as this sequence of moves
-
-1 2
-4 3
-reason do not believe optimal because
-1
-2
-is equivalent
-
-cannot move like this
-start at 1 move right 
-1 2 3 4 *5*
-as moved to *5* violated puzzle
-
-could have this
-*     5
-1 2 3 4
-*     5
-
-with 4 rotations equivalents
-5 4 5
-  3
-  2
-* 1 *
-
-can show some moves are legal but degenerate
-as in case of
-1 2
-4 3
-
-idea of a rope with markers on
-or maybe flares lighting the way
-
-*start*1
- *2
-    *3
-        *4
-            *5
-               *6
-                  *7
-	             *target*
-		     
-how would prove that a particular path is optimal ?
-what logic ?
-what reasoning ?
-
-is a downward ladder less costly than a straight shoot along top and down side ?
-
-*1 c  c c  c     c c c c
-*2  a      c c c c     c c c c
-*3   a                       c 
-*4     a                         
-*5       a
-*6         a                 c  
-*7           a
-8               a            c
-9                 a   
-10                   a       c 
-11                     a    
-12                       a   c  
-13                         a *end*
- 1 2 3 4 5 6 7 8 9 10 11 12 13
-
-
-corallary is what is the worst most costly path could take ?
-
-top left point has to be used - otherwise invalid start position
-bot left point has to be used - or feature in the solution otherwise not a solution
-
-a c e
-b d l 
-f g k
-h i j 
-quickest way get to a -> g
-once at f  go g
-
-if we think about a smaller problem can solve
-say a square 3 away from top left
-if we search for ways to reach the square say at 3 3
-if we keep open mind
-if we ever find a path to 3 3
-we can record the cost of getting there in an oracle and use that as proof that 3 3 is
-reachable with a cost of C
-
-now we keep searching for paths to get to C
-if the search path we are on exceeds C then we know wee cannot find a shorter path
-on this search path and terminate search path
-once all search paths terminate
-we are left with a minimum cost to reach X using particular paths
-
-there may be more than one optimal solution to reach X
-
-we can then use the fact we reach X
-
-the optimal path is composed of optimal steps between optimal stepping stones
-
-there may be several optimal paths each within its own context ,
-will have its own optimal stones and steps to get there
-
-definition
-an optimal path is composed only of optimal steps
-
-in other words an optimal path contains no suboptimal steps
-ie no countexample can be found to reach part of an optimal path in a shorter number of steps
-or less costly number of steps
-depending on how want to define measure of optimal
-
-breadth first search -- search space too large ? 
-oracle = hash table
-know fixed 
-
-each square has a cost associated with it
-
-posit : optimal path contains no cycles
-
-because if optimal path can reach square A with cost C , would not choose to increase
-this cost otherwise would not be on optimal path
-
-another 2 d array rather than hash table
-record in that grid
-
-grid square either
-null ()
-or contains a list of 
-((cost path-to-that-grid-square)(cost path-to-that-grid-square))
-
-if path is found to reach a square in less cost ,
-square is cleared
-((lower-cost lower-cost-path))
-is then recorded ...
-
-memory is bit low
-so we only record one witness how to arrive at a particular square
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
+mkfifo data
+cost-depth3.scm => cost-depth3
+viz-big.scm => viz-big
+
+cost-depth3 &
+viz-big &
+
+restrict cost to certain value - can finish the example 13 x 13 quite quickly
+e.g (solve 105)
+restricts max-cost to 105 and does not continue depth first search
+
+
+
+
+
+
+maximum depth first search -
+what is cut off - can we show this search path is futile as can never reach lower right corner
+think knights-tour puzzle when it blocks off corner not accessible ,
+when fix that , solutions knights tour fairly easily
+
+
+grid x y
+cost to each move
+wish to minimize cost
+start top left 1,1
+goal reach bottom right width,height
+
+example 13 x 13 
+input 141 x 141
+
+i/o problem - get numbers into some form of a 2d grid
+hash table ?
+array ?
+
+2413432311323
+3215453535623
+3255245654254
+3446585845452
+4546657867536
+1438598798454
+4457876987766
+3637877979653
+4654967986887
+4564679986453
+1224686865563
+2546548887735
+4322674655533
+
+
+#(
+#(2 4 1 3 4 3 2 3 1 1 3 2 3)
+#(3 2 1 5 4 5 3 5 3 5 6 2 3)
+#(3 2 5 5 2 4 5 6 5 4 2 5 4)
+#(3 4 4 6 5 8 5 8 4 5 4 5 2)
+#(4 5 4 6 6 5 7 8 6 7 5 3 6)
+#(1 4 3 8 5 9 8 7 9 8 4 5 4)
+#(4 4 5 7 8 7 6 9 8 7 7 6 6)
+#(3 6 3 7 8 7 7 9 7 9 6 5 3)
+#(4 6 5 4 9 6 7 9 8 6 8 8 7)
+#(4 5 6 4 6 7 9 9 8 6 4 5 3)
+#(1 2 2 4 6 8 6 8 6 5 5 6 3)
+#(2 5 4 6 5 4 8 8 8 7 7 3 5)
+#(4 3 2 2 6 7 4 6 5 5 5 3 3)
+)
