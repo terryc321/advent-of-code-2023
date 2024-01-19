@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# stop on errors?
+set -e
+
+#rm -f viz-big cost-depth3
+
+csc -o viz-big viz-big.scm
+#./cost-breadth3 # generates *score* solution board
+#csc -o cost-breadth3 cost-breadth3.scm
+
+csc -o part-A part-A.scm
+
+
+echo "compilation finished"
+
+./part-A &
+./viz-big &
+
+
+

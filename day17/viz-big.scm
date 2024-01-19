@@ -848,6 +848,7 @@ first try draw a star pattern
 
 
 
+
 (define (setup)
 
   ;; (set! input  (list->grid (read-all "input")))
@@ -855,7 +856,8 @@ first try draw a star pattern
   ;;(set! example2 (list->grid (read-all "example2")))
     
   (format #t "press a key to see next ~%")
-  (set! data-port (open-input-file "solutions"))
+  ;;(set! data-port (open-input-file "solutions"))
+  (set! data-port (open-input-file "data"))
   (next-data)
   (set! width-data (grid-width example))
   (set! height-data (grid-height example))
