@@ -1,4 +1,117 @@
 
+
+
+have a proposed solution - says 916 - appears there are several solutions
+of 916 also
+
+part A board is 141 x 141 width x height
+find 916 in lower right corner xy 140 140 
+
+  (916 right down down)
+ from *score* 
+
+
+---- accepted !!!
+
+
+
+saved *score* scoreboard to rescue.scm
+
+can we work backwards from 
+
+#;5> (pp (vector-ref (vector-ref *score* 140) 140))
+#(#f
+  #f
+  #f
+  #f
+  #f
+  #f
+  #f
+  #f
+  #f
+  (928 right right right)
+  #f
+  (920 right right down)
+  #f
+  #f
+  #f
+  (918 right down left)
+  (917 right down right)
+  (916 right down down)
+  #f
+  #f
+  #f
+  #f
+  #f
+  #f
+  #f
+  #f
+  #f
+  #f
+  #f
+  #f
+  (917 down right right)
+  (921 down right up)
+  (916 down right down)
+  #f
+  (917 down down right)
+  (916 down down down)
+  #f)
+
+
+;; ----------------------
+
+breadth first search
+
+gave each square 37 opportunities
+
+915
+
+can we reconstruct the solution ?
+
+
+
+
+;; ----------------------
+
+each square can only be entered by 4 ways
+
+ 1          2         3          4
+from-top from-left from-right from-below
+
+so at most size grid x 4 x [ cost dir1 dir2 dir3 ]
+
+only going to pass through any one square once on optimal run
+
+
+
+
+;; -----------------------
+is it a breadth first problem ?
+
+start top left 1,1
+either go right to 2,1
+or down to 1,2
+
+2,1 has cost (xy 2 1)
+1,2 has cost (xy 1 2)
+
+never go over same square?
+
+look at square and what information do i need to make a decision on
+
+square 8 8 has following data :
+ [ cost 5 moves left-left-up ]
+ [ cost 123 moves right-up-right ]
+ [ ... ]
+ [ ... ]
+
+0   2    3
+3   4/3  ?
+?   ?    ?
+
+
+
 ;; -----------------------
 incremental improvement
 

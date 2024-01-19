@@ -483,9 +483,9 @@ prefix %
   (set! *max-cost* mc)
   (set! *score* (copy-vec *vec*))
   ;; go right
-  (next-state2 2 1 (xy 2 1) 'right #f #f '((2 1 (xy 2 1)) (1 1 0)))
+  (next-state2 2 1 (xy 2 1) 'right #f #f `((2 1 ,(xy 2 1)) (1 1 0)))
   ;; go down
-  (next-state2 1 2 (xy 1 2) 'down #f #f '((1 2 (xy 1 2)) (1 1 0)))
+  (next-state2 1 2 (xy 1 2) 'down #f #f `((1 2 ,(xy 1 2)) (1 1 0)))
   )
 
 

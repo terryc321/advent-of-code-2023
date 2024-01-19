@@ -88,6 +88,9 @@
 (define *open* #f)
 (define *score* #f)
 
+(define *max-cost* 110)
+(define *best* 9999999999999999999999)
+
 (define (keep? x y score) #t)
 
 (define *height* (vec-height *vec*))
@@ -116,8 +119,9 @@
      ;; (format #t "position (~a , ~a) ~%~%" x y)
      (when
 	 (and (= x *width*) (= y *height*))
-       (format #t "(~a,~a) => score ~a ~%" x y score))     
-     ))
+       (when (< score *best*)
+	 (set! *best* score)
+	 (format #t "(~a ~a) : best-so-far ~a ~%" x y *best*)))))
 
 
 
@@ -125,6 +129,7 @@
   ;; some feedback here ?
   (macro-feedback)
   (cond
+   ((> score *max-cost*) #f) ;; end this depth first search if max cost exceeded
    ((eq? m1 'left) (next-state-left x y score m1 m2 m3))
    ((eq? m1 'right) (next-state-right x y score m1 m2 m3))
    ((eq? m1 'up) (next-state-up x y score m1 m2 m3))
@@ -285,7 +290,9 @@ prefix %
   (macro-go-down))
 
 
-(define (solve)
+(define (solve mc)
+  (set! *best* 999999999999999999999)
+  (set! *max-cost* mc)
   (set! *score* (copy-vec *vec*))
   ;; go right
   (next-state2 2 1 (xy 2 1) 'right #f #f)
@@ -294,8 +301,8 @@ prefix %
   )
 
 
-
-(solve)
+;; solve for a maximum cost
+(solve 103)
 
 
 

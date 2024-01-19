@@ -1,105 +1,114 @@
 
 #|
 
-day17
+fun3.scm generates output in form of 
+  (format output-port "~a~%" `(path ,path id ,id cost ,cost))
+    (set! id (1+ id)))
 
-sadly today guile and the sdl2 library do not play nice ... here it dies ...
-jit.c:5960: fatal: assertion failed
+
+some sort of visualiser in SDL2
+only problem is i forgot how input to this thing should work
+
+make a first in first out data file
+$ mkfifo data
+
+currently looks for input , example , example1.out as data file
+list->grid :
+
+then run program to dump data into data
+then run visualiser to read data from data
+
+what format are we using ?
+
+
+
+
+
+because guile jit just in time compiler ate the bed and crashed using sdl2
+had to port code to use chicken schme instead
+
+in the notes
+https://gitlab.com/chicken-sdl2/chicken-sdl2/-/blob/main/docs/enums.md#window-flags
+
+fullscreen                    SDL_WINDOW_FULLSCREEN
+fullscreen-desktop            SDL_WINDOW_FULLSCREEN_DESKTOP
+opengl                        SDL_WINDOW_OPENGL
+shown                         SDL_WINDOW_SHOWN
+hidden                        SDL_WINDOW_HIDDEN
+borderless                    SDL_WINDOW_BORDERLESS
+resizable                     SDL_WINDOW_RESIZABLE
+minimized                     SDL_WINDOW_MINIMIZED
+maximized                     SDL_WINDOW_MAXIMIZED
+input-grabbed                 SDL_WINDOW_INPUT_GRABBED
+input-focus                   SDL_WINDOW_INPUT_FOCUS
+mouse-focus                   SDL_WINDOW_MOUSE_FOCUS
+foreign                       SDL_WINDOW_FOREIGN
+allow-high-dpi                SDL_WINDOW_ALLOW_HIGHDPI           (SDL 2.0.1+)
+mouse-capture                 SDL_WINDOW_MOUSE_CAPTURE           (SDL 2.0.4+)
+always-on-top                 SDL_WINDOW_ALWAYS_ON_TOP           (SDL 2.0.5+)
+
+^^^
+these on the left are the symbols to use for chcken scheme !!!
 
 
 |#
-(use-modules (system base compile))
 
-;;(default-optimization-level 9)
-(default-optimization-level 9)
+(import scheme)
 
+(import simple-exceptions)
 
-(use-modules (ice-9 textual-ports))
-(use-modules (ice-9 format)) ;; format common lisp 
-(use-modules (ice-9 pretty-print)) ;; pretty-print
+(import (chicken string))
+(import (chicken pretty-print))
 (define pp pretty-print)
-;;(use-modules (rnrs)) ;; assert 
-(use-modules (srfi srfi-1)) ;; first second third ...
-(use-modules (srfi srfi-2)) ;; first second third ...
-(use-modules (statprof)) ;; statistical profiler
 
-(use-modules ((rnrs)
-	      ;;#:select open-pipe close-pipe)
-	      #:renamer (symbol-prefix-proc 'rnrs:)))
-;; assert
+(import (chicken io))
+(import (chicken format))
+(import (chicken sort))
+(import (chicken file))
+(import (chicken process-context))
+;; (change-directory "day15")
+;; (current-directory)
 
-;; regular expression
-(use-modules (ice-9 regex)) 
+(import procedural-macros)
+(import regex)
 
-;; pattern matcher ?
-(use-modules (ice-9 match))
+(import simple-md5)
+(import simple-loops)
 
-;; binary io -- dont know if this helped any as read-u8 is for reading ints no??
-(use-modules (ice-9 binary-ports))
+(import srfi-69)
+;; hash-table-ref  hash key thunk
+;; hash-table-set! hash key val
 
-;; r7rs 
-(use-modules ((scheme base)
-	      #:renamer (symbol-prefix-proc 'base:)))
-
-;; ---------------- sdl specific stuff ---------------------------
+;; sudo chicken-install srfi-178
+(import srfi-178)
+;; srfi-178 provides bit-vectors
 
 
-(use-modules (sdl2)
-	     (sdl2 rect)
-	     (sdl2 events)
-             (sdl2 render)
-             ((sdl2 surface)
-	      ;;#:select open-pipe close-pipe)
-	      #:renamer (symbol-prefix-proc 'surface:))
-             (sdl2 video)
-	     (sdl2 ttf) ;; fonts
-	     (sdl2 input keyboard))
+;; (import-for-syntax
+;;   (only checks <<)
+;;   (only bindings bind bind-case)
+;;   (only procedural-macros macro-rules with-renamed-symbols once-only))
+
+(import sequences)
+
+(import srfi-1)
+
+(import matchable)
+
+;; Compatible with both CHICKEN 4 and CHICKEN 5.
+;; sdl2 egg
+;; sdl2-image egg
+;; sdl2-ttf egg
+(cond-expand
+  (chicken-4 (use (prefix sdl2 "sdl2:")
+                  (prefix sdl2-image "img:")))
+  (chicken-5 (import (prefix sdl2 "sdl2:")
+                     (prefix sdl2-image "img:")
+		     (prefix sdl2-ttf "ttf:"))))
 
 
-(use-modules (ice-9 optargs))
 
 
-;; --------------------- macros --------------------------
-(define-macro (do-list varls . body)
-  (let* ((fn (gensym "fn"))
-	 (xs (gensym "xs"))
-	 (var (car varls))
-	 (ls  (car (cdr varls))))
-    `(letrec ((,fn (lambda (,xs)
-		     (cond
-		      ((null? ,xs) #f)
-		      (#t (let ((,var (car ,xs)))
-			    ,@body
-			    (,fn (cdr ,xs))))))))
-       (,fn ,ls))))
-
-;; --------------------- while ----------------------------
-
-(defmacro while (condition . body)
-  (let ((lup (gensym "loop")))
-    `(letrec ((,lup (lambda ()
-		      (when ,condition
-			,@body
-			(,lup)))))
-       (,lup))))
-
-;; (let ((i 0))
-;;   (while (< i 10)
-;;     (format #t " i = ~a ~%" i )
-;;     (set!  i (+ i 1))))
-
-;; --------------------- macros --------------------------
-
-;; (chdir "day16")
-;; (getcwd)
-
-#|
-some io
-read-expr : read expression from file
-
-read-all : read all lines of file and slurp into a string list
-
-|#
 ;; -------------------- sdl specific stuff ---------------
 (define win #f)
 (define mouse-x 0)
@@ -111,7 +120,7 @@ read-all : read all lines of file and slurp into a string list
 (define mouse-messages 0)
 
 (define small-font #f)
-(define small-font-size 12)
+(define small-font-size 30)
 
 (define large-font #f)
 (define large-font-size 50)
@@ -121,8 +130,22 @@ read-all : read all lines of file and slurp into a string list
 (define out-x 0)
 (define out-y 0)
 
-(define window-width 0)
-(define window-height 0)
+(define window-width 800)
+(define window-height 800)
+
+(define font #f)
+(define window #f)
+(define renderer #f)
+(define text #f)
+(define surface #f)
+(define texture #f)
+
+(define text-texture #f)
+(define text-surface #f)
+
+
+;;----- 2nd window
+
 
 ;; -------------- model stuff -------------------------------------
 (define code #f)
@@ -146,6 +169,13 @@ read-all : read all lines of file and slurp into a string list
 (define data #f)
 (define data-filename "example1.out")
 (define step 0)
+
+;; ----------------------------------------------------
+(define (1+ x)(+ x 1))
+(define (1- x)(- x 1))
+
+;; -----------------------------------------------------
+  
 
 ;; ----------------------------------------------------
 
@@ -187,7 +217,7 @@ read-all : read all lines of file and slurp into a string list
     (lambda (port)
       (let ((lines '()))
 	(letrec ((foo (lambda ()
-			(let ((line (get-line port)))
+			(let ((line (read-line port)))
 			  (format #t "~a ~%" line)
 			  (cond
 			   ((eof-object? line) (reverse lines))
@@ -237,22 +267,6 @@ like ticks milliseconds since sdl started
 
 
 |#
-
-(define (draw-text ren font str x y)
-  (let* ((surface (render-font-solid font str (make-color 255 0 0 0)))
-	 (wid (surface:surface-width surface))
-	 (hgt (surface:surface-height surface))
-	 (texture (surface->texture ren surface)))
-    (render-copy ren texture #:srcrect `(0 0 ,wid ,hgt)#:dstrect `(,x ,y ,wid ,hgt))
-    ;;(format #t "surface = ~a ~%" surface))
-    ))
-
-
-(define (draw-large-text ren str x y)
-  (draw-text ren large-font str x y))
-
-(define (draw-small-text ren str x y)
-  (draw-text ren small-font str x y))
 
 
 #|
@@ -309,7 +323,7 @@ draw some sort of grid
 	(when (onboard? j k)
 	  (let ((val (get-xy grid-data j k)))
 	    ;;(format #t "grid data ; ~a ~a => ~a ~%" j k val)
-	  (draw-large-text ren (format #f "~a" val) (+ x (third dx))  y)))
+	    (draw-large-text ren (format #f "~a" val) (+ x (third dx))  y)))
 	(set! x (+ x dx))
 	(set! j (+ j 1))) ;; while < x
       (set! k (+ k 1))
@@ -450,13 +464,17 @@ first try draw a star pattern
 
 
 
-
+#|
+------------------ draw hot spots ----------------
+|#
 (define (draw-single-hot-spot ren rx ry )
-  (set-renderer-draw-color! ren 0 125 0 0)
+  (sdl2:render-draw-color-set! renderer (sdl2:make-color 0 125 0 0))
   (let ((x 0)
 	(y 0)
 	(dx box-size)
-	(dy box-size))
+	(dy box-size)
+	(border 3)
+	)
     (set! x (+ dx (* (- rx out-x) box-size)))
     (set! y (+ dy (* (- ry out-y) box-size)))
     (cond
@@ -465,7 +483,11 @@ first try draw a star pattern
        (>= x dx)
        (< y (- window-height (* 2 box-size)))
        (< x (- window-width (* 2 box-size))))
-      (fill-rect ren (make-rect x y dx dy))))))
+      (sdl2:render-fill-rect! renderer (sdl2:make-rect (+ x border) (+ y border)
+						       (- dx (* border 2))
+						       (- dy (* border 2))
+						       ))))))
+
 
 
 (define (draw-all-hot-spots ren)
@@ -477,8 +499,12 @@ first try draw a star pattern
 		(draw-single-hot-spot ren x y)))))))
 
 
+
+#|
+------------ draws the board -------------------
+|#
 (define (draw-single-board-spot ren rx ry )
-  (set-renderer-draw-color! ren 0 0 125 0)
+  (sdl2:render-draw-color-set! renderer (sdl2:make-color 0 0 125 255))
   (let ((x 0)
 	(y 0)
 	(dx box-size)
@@ -491,14 +517,16 @@ first try draw a star pattern
        (>= x dx)
        (< y (- window-height (* 2 box-size)))
        (< x (- window-width (* 2 box-size))))
-      (fill-rect ren (make-rect x y dx dy))))))
+      (sdl2:render-fill-rect! renderer (sdl2:make-rect x y dx dy))))))
 
 (define (draw-all-board-spots ren)
   (cond
    (ren
     (do-list (y (iota height-data))
 	     (do-list (x (iota width-data))
-		      (draw-single-board-spot ren x y))))))
+		      (draw-single-board-spot renderer x y))))))
+;;------------------------------------------------------------------
+
 
 
 
@@ -507,9 +535,8 @@ first try draw a star pattern
    ((eq? s 'path) path-data)
    ((eq? s 'id) id-data)
    ((eq? s 'cost) cost-data)
-   
-   
    (#t #f)))
+
 
 (define (next-data)
   (let ((d (read data-port)))
@@ -517,7 +544,10 @@ first try draw a star pattern
       (('path path 'id id 'cost cost)
        (set! path-data path)
        (set! id-data id)
-       (set! cost-data cost)))))
+       (set! cost-data cost)
+       ;;(format #t "path id ~a~%path ~a ~%" id path-data)
+       )
+      )))
 
 
 
@@ -677,56 +707,475 @@ first try draw a star pattern
 
 (define (setup)
 
-  (set! input  (list->grid (read-all "input")))
-  (set! example (list->grid (read-all "example")))
+  ;; (set! input  (list->grid (read-all "input")))
+  ;; (set! example (list->grid (read-all "example")))  
   ;;(set! example2 (list->grid (read-all "example2")))
-
+    
   (format #t "press a key to see next ~%")
-  (set! data-port (open-input-file "example1.out"))
+  (set! data-port (open-input-file "data"))
   (next-data)
   (set! width-data (grid-width example))
   (set! height-data (grid-height example))
   (set! grid-data example)
   )
 
+;;; from chicken eggsweeper demo ----- mainly for main loop 
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;;; MAIN LOOP
+
+;; (define (main-loop)
+;;   ;; An event struct that will be overwritten by sdl2:wait-event!.
+;;   ;; Passing an existing event struct to sdl2:wait-event! is optional,
+;;   ;; but it reduces the amount of garbage, because sdl2:wait-event!
+;;   ;; allocates a new event if none is passed. Since there may be many
+;;   ;; events handled per second, that small bit of garbage can add up.
+;;   (define event (sdl2:make-event))
+
+;;   (restart!)
+
+;;   ;; Create a continuation that can be called to exit the main loop.
+;;   (let/cc exit-main-loop!
+;;     ;; Loop forever (until exit-main-loop! is called).
+;;     (while #t
+;;       (when (any-dirty-tiles?)
+;;         (redraw-dirty-tiles! window-surf *game-over* *focused-tile*)
+;;         (sdl2:update-window-surface! window))
+
+;;       ;; Wait for the next event, then handle it.
+;;       (handle-event (sdl2:wait-event! event) exit-main-loop!))))
+
+
+;; ;;; Disable various irrelevant event types, to avoid wasted time and
+;; ;;; memory garbage from handling them.
+;; (set! (sdl2:event-state 'text-editing) #f)
+;; (set! (sdl2:event-state 'text-input) #f)
+;; (set! (sdl2:event-state 'mouse-wheel) #f)
+;; (set! (sdl2:event-state 'finger-down) #f)
+;; (set! (sdl2:event-state 'finger-up) #f)
+;; (set! (sdl2:event-state 'finger-motion) #f)
+;; (set! (sdl2:event-state 'multi-gesture) #f)
+
+
+;; (define (handle-event ev exit-main-loop!)
+;;   (case (sdl2:event-type ev)
+;;     ;; Window exposed, etc.
+;;     ((window)
+;;      (sdl2:update-window-surface! window))
+
+;;     ;; User requested app quit (e.g. clicked the close button).
+;;     ((quit)
+;;      (exit-main-loop! #t))
+
+;;     ;; Keyboard key pressed
+;;     ((key-down)
+;;      (case (sdl2:keyboard-event-sym ev)
+;;        ;; Escape quits the program
+;;        ((escape)
+;;         (exit-main-loop! #t))
+
+;;        ;; R restarts the game with the current difficulty level
+;;        ((r)
+;;         (restart!))
+
+;;        ;; Number row keys switch difficulty level
+;;        ((n-1)  (select-level! 1) (restart!))
+;;        ((n-2)  (select-level! 2) (restart!))
+;;        ((n-3)  (select-level! 3) (restart!))
+;;        ((n-4)  (select-level! 4) (restart!))
+
+;;        ;; Arrow keys or keypad numbers try to move focus
+;;        ((kp-1)         (try-move-focus! -1  1))
+;;        ((kp-2   down)  (try-move-focus!  0  1))
+;;        ((kp-3)         (try-move-focus!  1  1))
+;;        ((kp-4   left)  (try-move-focus! -1  0))
+;;        ((kp-6  right)  (try-move-focus!  1  0))
+;;        ((kp-7)         (try-move-focus! -1 -1))
+;;        ((kp-8     up)  (try-move-focus!  0 -1))
+;;        ((kp-9)         (try-move-focus!  1 -1))
+
+;;        ;; Return or keypad enter tries to open focused tile
+;;        ((return kp-enter)
+;;         (when (and *focused-tile* (not *game-over*))
+;;           (try-open-tile! *focused-tile*)))
+
+;;        ;; Space or keypad 0 tries to toggle flag focused tile
+;;        ((space kp-0)
+;;         (when (and *focused-tile* (not *game-over*))
+;;           (try-flag-tile! *focused-tile*)))))
+
+;;     ;; Mouse button pressed
+;;     ((mouse-button-down)
+;;      (let* ((mouse-x (sdl2:mouse-button-event-x ev))
+;;             (mouse-y (sdl2:mouse-button-event-y ev))
+;;             (tile (screen-point->tile mouse-x mouse-y *board*)))
+;;        (case (sdl2:mouse-button-event-button ev)
+;;          ;; If Ctrl is not being held, left mouse button tries to open
+;;          ;; the tile. But if Ctrl is being held, left mouse button
+;;          ;; tries to toggle flag, acting like right mouse button.
+;;          ((left)
+;;           (when (and tile (not *game-over*))
+;;             (if (not (member 'ctrl (sdl2:mod-state)))
+;;                 (try-open-tile! tile)
+;;                 (try-flag-tile! tile))))
+
+;;          ;; Right mouse button tries to toggle flag on clicked tile
+;;          ((right)
+;;           (when (and tile (not *game-over*))
+;;             (try-flag-tile! tile))))))
+
+;;     ;; Mouse cursor moved
+;;     ((mouse-motion)
+;;      (let* ((mouse-x (sdl2:mouse-motion-event-x ev))
+;;             (mouse-y (sdl2:mouse-motion-event-y ev))
+;;             (tile (screen-point->tile mouse-x mouse-y *board*)))
+;;        ;; Focus on the tile that the mouse is pointing at.
+;;        (when (not *game-over*)
+;;          (focus-on-tile! tile))))))
+
+
+;; (sdl2:fill-rect! (sdl2:window-surface window)
+;;                  #f
+;;                  (sdl2:make-color 255 255 255))
+
+;; (sdl2:fill-rect! (sdl2:window-surface window)
+;;                  (sdl2:make-rect 250 250 50 50)
+;;                  (sdl2:make-color 0 0 255))
+
+
+;; (main-loop)
+
+#|
+  
+    
+  ;;(sdl2:update-window-surface! window)
+  ;;(sdl2:delay! 5000)
+
+  ;; (sdl2:sdl-init)
+  ;; (ttf-init)
+  ;; (set! small-font (load-font "/home/terry/advent-of-code/2023/day16/ProggyClean.ttf" small-font-size))
+  ;; (format #t "small font = ~a ~%" small-font)
+
+  ;; (set! large-font (load-font "/home/terry/advent-of-code/2023/day16/ProggyClean.ttf" large-font-size))
+  ;; (format #t "large font = ~a ~%" large-font)
+
+  ;; (format #t "input ~a ~%" input)
+  ;; (format #t "first input ~%~a ~%" (vector-ref input 0))
+
+
+  ;; (call-with-window (make-window #:title "hello world"
+  ;; 				 #:position '(0 0)
+  ;; 				 #:maximize? #t
+  ;; 				 #:minimize? #t
+  ;; 				 #:resizable? #t
+  ;; 				 #:border? #t
+  ;; 				 #:high-dpi? #t)
+  ;; 		    (lambda (window)
+  ;; 		      (set! win window)
+  ;; 		      (call-with-renderer (make-renderer window) draw)))
+
+  ;; (sdl-quit)
+  
+  
+
+|#
+
+
+#|
+
+mouse stuff
+
+      ;; Mouse button pressed
+      ((mouse-button-down)
+       (let* ((mouse-x (sdl2:mouse-button-event-x ev))
+              (mouse-y (sdl2:mouse-button-event-y ev))
+	      )
+              ;;(tile (screen-point->tile mouse-x mouse-y *board*)))
+	 (case (sdl2:mouse-button-event-button ev)
+           ;; If Ctrl is not being held, left mouse button tries to open
+           ;; the tile. But if Ctrl is being held, left mouse button
+           ;; tries to toggle flag, acting like right mouse button.
+           ((left) #f)
+	   
+            ;; (when (and tile (not *game-over*))
+            ;;   (if (not (member 'ctrl (sdl2:mod-state)))
+            ;;       (try-open-tile! tile)
+            ;;       (try-flag-tile! tile))))
+
+           ;; Right mouse button tries to toggle flag on clicked tile
+           ((right) #f)
+	   )))
+            ;; (when (and tile (not *game-over*))
+            ;;   (try-flag-tile! tile))))))
+
+      ;; Mouse cursor moved
+      ((mouse-motion)
+       (let* ((mouse-x (sdl2:mouse-motion-event-x ev))
+              (mouse-y (sdl2:mouse-motion-event-y ev))
+	      )
+	 #f))
+      
+|#
+
+#|
+what was the need to feel like putting all routines inside another routine ?
+
+(format #t "file portmyport = ~a ~%" my-port)
+complete re-write based on how chicken scheme implements sdl2 ffi
+
+|#
 
 
 
+(define (handle-event ev exit-main-loop!)
+  (case (sdl2:event-type ev)
+    ;; Window exposed, etc.
+    ((window)
+     (case (sdl2:window-event-event ev)
+       ((size-changed)
+	(call-with-values
+	    (lambda () (sdl2:window-size window))
+	  (lambda (w h) (set! window-height h)
+		  (set! window-width w)))))
+     
+     (sdl2:render-present! renderer) ;; try this instead
+     ;;(sdl2:update-window-surface! window)
+     )
+    ;; window resize
+    ;; set window-height window-width
+
+    
+    ;; User requested app quit (e.g. clicked the close button).
+    ((quit)   (exit-main-loop! #t))
+    ;; Keyboard key pressed
+    ((key-down)
+     (format #t "key-down : sym ~a ~%" (sdl2:keyboard-event-sym ev))
+     (case (sdl2:keyboard-event-sym ev)
+       ;; Escape quits the program
+       ((escape)
+        (exit-main-loop! #t))
+
+       ((w)
+	(set! step (1+ step))
+	(next-data) ;; read another path
+	
+	)
+       ((s) (set! step (1- step)) (when (< step 0) (set! step 0)))		 
+       ((down) (set! out-y (1+ out-y)))
+       ((up) (set! out-y (1- out-y)))
+       ((left) (set! out-x (1- out-x)))
+       ((right) (set! out-x (1+ out-x)))
+       ((minus) (smaller-box-size!) #t)
+       ((equals) (larger-box-size!) #t)		
+       
+       ;; R restarts the game with the current difficulty level
+       ((r) (redraw!))
+       ;;(restart!))
+
+       ((a) (format #t "user pressed a !~%"))
+       ;; Number row keys switch difficulty level
+       ((n-1)  #f) ;;(select-level! 1) (restart!))
+       ((n-2)  #f) ;;(select-level! 2) (restart!))
+       ((n-3)  #f) ;;(select-level! 3) (restart!))
+       ((n-4)  #f) ;;(select-level! 4) (restart!))
+
+       ;; Arrow keys or keypad numbers try to move focus
+       ((kp-1)         #f) ;;(try-move-focus! -1  1))
+       ((kp-2   down)  #f) ;;(try-move-focus!  0  1))
+       ((kp-3)         #f) ;;(try-move-focus!  1  1))
+       ((kp-4   left)  #f) ;;(try-move-focus! -1  0))
+       ((kp-6  right)  #f) ;;(try-move-focus!  1  0))
+       ((kp-7)         #f) ;;(try-move-focus! -1 -1))
+       ((kp-8     up)  #f) ;;(try-move-focus!  0 -1))
+       ((kp-9)         #f) ;;(try-move-focus!  1 -1))
+
+       ;; Return or keypad enter tries to open focused tile
+       ((return kp-enter) #f) ;;
+       ;; (when (and *focused-tile* (not *game-over*))
+       ;;   (try-open-tile! *focused-tile*))
+
+       ;; Space or keypad 0 tries to toggle flag focused tile
+       ((space kp-0) #f) ;;
+       ;; (when (and *focused-tile* (not *game-over*))
+       ;;   (try-flag-tile! *focused-tile*))
+       
+       
+       ) ;; end of case key-down
+     (redraw!)
+     );; key-down
+
+    ;; mouse-stuff-goes-here
+    
+    ))
+;; ---------- handle event ------------
 
 
-;;(format #t "file portmyport = ~a ~%" my-port)
+(define (draw-text ren font str x y)
+  (let* ((text-surface (ttf:render-text-solid font str (sdl2:make-color 255 0 0 255)))
+	 (texture (sdl2:create-texture-from-surface ren text-surface)))
+    (call-with-values (lambda () (ttf:size-text font text))
+      (lambda (w h)
+	(sdl2:render-copy! ren texture #f (sdl2:make-rect x y w h))))))
 
+;; optional args ??
+;; #:srcrect #f ;;(sdl2:make-rect 0 0 w h)
+;; #:dstrect (sdl2:make-rect x y w h))))))
+
+
+(define (draw-large-text ren str x y)
+  (draw-text ren large-font str x y))
+
+(define (draw-small-text ren str x y)
+  (draw-text ren small-font str x y))
+
+
+
+(define (redraw!)
+  
+  ;; all white
+  (sdl2:render-draw-color-set! renderer (sdl2:make-color 255 255 255))
+  (sdl2:render-clear! renderer)
+  
+  ;; black square
+  (sdl2:render-draw-color-set! renderer (sdl2:make-color 0 0 0))
+  (sdl2:render-fill-rect! renderer (sdl2:make-rect 0 0 50 50))
+  ;; blue square 50 x 50 wide 
+  (sdl2:render-draw-color-set! renderer (sdl2:make-color 0 0 255))
+  (sdl2:render-fill-rect! renderer (sdl2:make-rect 250 250 50 50))
+  ;; red square
+  (sdl2:render-draw-color-set! renderer (sdl2:make-color 255 0 0))
+  ;; red square outlines
+  (sdl2:render-draw-rect! renderer (sdl2:make-rect 350 350 50 50))
+  (sdl2:render-draw-rect! renderer (sdl2:make-rect 400 350 50 50))
+  (sdl2:render-draw-rect! renderer (sdl2:make-rect 450 350 50 50))
+  ;; draw the board
+  (draw-all-board-spots renderer)
+  ;; draw hot spots
+  (draw-all-hot-spots renderer)
+
+
+  
+  ;; call with values  takes two thunks - procedures no args
+  ;;   (call-with-values (lambda () ..) (lambda () ...))
+  ;;
+  #|
+  (call-with-values (lambda () (ttf:size-text large-font text))
+    (lambda (w h)
+      ;;(format #t "size width ~a : height ~a ~%" w h )
+      (sdl2:render-copy! renderer text-texture (sdl2:make-rect 0 0 w h)
+			 (sdl2:make-rect 20 25 w h))))
+|#
+  (draw-small-text  renderer (format #f "hi-i am small text ~a" (if (null? path-data)
+								    '()
+								    (car path-data)))
+		    60 10)
+   
+        
+
+  ;; text-texture is hello world writ large
+  ;;(sdl2:render-copy! renderer text-texture #f #f) 
+  
+  ;; show on window
+  (sdl2:render-present! renderer)
+  )  ;; ------ render! -------------
+
+
+;; just loop 
+(define (main-loop)
+  (define event (sdl2:make-event))
+  (call/cc (lambda (exit-main-loop!)
+	     (redraw!)
+	     ;; Loop forever (until exit-main-loop! is called).
+	     (do-while #t
+		       (next-data)
+		       (redraw!)
+
+		       ;; Wait for the next event, then handle it.
+		       (handle-event (sdl2:wait-event! event) exit-main-loop!)
+		       #|
+		       (let ((events (sdl2:peek-events 1)))
+			 (cond
+			  ((null? events) #f)
+			  (#t (set! event (car(sdl2:get-events! 1)))
+			      (handle-event event exit-main-loop!))))
+		       |#
+		       ))))
+
+
+
+#|
+
+ttf fonts to do
+
+
+|#
 (define (viz)
 
-  (sdl-init)
-  (ttf-init)
-  (set! small-font (load-font "/home/terry/advent-of-code/2023/day16/ProggyClean.ttf" small-font-size))
-  (format #t "small font = ~a ~%" small-font)
+  ;; ---------- entry point -----------
 
-  (set! large-font (load-font "/home/terry/advent-of-code/2023/day16/ProggyClean.ttf" large-font-size))
-  (format #t "large font = ~a ~%" large-font)
+  (sdl2:set-main-ready!)
+  (sdl2:init!)
+  (ttf:init!)
 
-  (format #t "input ~a ~%" input)
-  (format #t "first input ~%~a ~%" (vector-ref input 0))
+  ;;(define font (ttf:open-font "ComicNeue-Regular.otf" 40))
+  (set! large-font (ttf:open-font "/home/terry/advent-of-code/advent-of-code-2023/day17/ProggyClean.ttf" large-font-size))  
+  (set! small-font (ttf:open-font "/home/terry/advent-of-code/advent-of-code-2023/day17/ProggyClean.ttf" small-font-size))  
+  
+  ;;(define-values (w h) (ttf:size-utf8 font text))
+  ;;(define window (sdl2:create-window! text 'centered 'centered w h))
+  (set! window (sdl2:create-window! "Hello, World!"
+				    0 0
+				    window-width window-height
+				    '(resizable ) ;; fullscreen fullscreen-desktop 
+				    ))
+  ;;(set! surface (sdl2:window-surface window))
+  (set! renderer (sdl2:create-renderer! window))
 
+  (set! text "Hello, World!")
+  (set! text-surface (ttf:render-text-solid large-font text (sdl2:make-color 255 0 0 255)))
+  (set! text-texture (sdl2:create-texture-from-surface renderer text-surface))
+  
+  
+  ;;(set! renderer (sdl2:create-software-renderer! surface))
+  ;;(set! texture (create-texture-from-surface renderer surface))
+  ;;;(set! texture (create-texture renderer format?? access?? 600 400))
 
-  (call-with-window (make-window #:title "hello world"
-				 #:position '(0 0)
-				 #:maximize? #t
-				 #:minimize? #t
-				 #:resizable? #t
-				 #:border? #t
-				 #:high-dpi? #t)
-		    (lambda (window)
-		      (set! win window)
-		      (call-with-renderer (make-renderer window) draw)))
+  #|
+  (let ((text-surface (ttf:render-utf8-shaded large-font text (sdl2:make-color 0 0 0) (sdl2:make-color 255 255 255))))
+    (sdl2:blit-surface! text-surface #f surface #f))
 
-  (sdl-quit)
+  (sdl2:blit-surface! surface #f (sdl2:window-surface window) #f)
+  (sdl2:delay! 3000)
+  |#
 
+  
+	      ;;(sdl2:window-surface window) #f))
+  
+  
+  ;;; Disable various irrelevant event types, to avoid wasted time and
+;;; memory garbage from handling them.
+  (set! (sdl2:event-state 'text-editing) #f)
+  (set! (sdl2:event-state 'text-input) #f)
+  (set! (sdl2:event-state 'mouse-wheel) #f)
+  (set! (sdl2:event-state 'finger-down) #f)
+  (set! (sdl2:event-state 'finger-up) #f)
+  (set! (sdl2:event-state 'finger-motion) #f)
+  (set! (sdl2:event-state 'multi-gesture) #f)
+
+  ;;      ;;(tile (screen-point->tile mouse-x mouse-y *board*)))
+  ;; ;; Focus on the tile that the mouse is pointing at.
+  ;; (when (not *game-over*)
+  ;;   (focus-on-tile! tile))))))
+
+  (main-loop)
+  (sdl2:quit!)
   )
 
 
 (define (run)
   (setup)
   (viz))
+
+
+(run)
+
 
