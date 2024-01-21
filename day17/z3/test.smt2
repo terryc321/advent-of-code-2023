@@ -334,8 +334,16 @@
 ;; y1 y2 y3 y4
 ;;(assert false)
 
-(declare-fun x () Int)
-(assert (> (+ x) 3))
+;; (declare-fun x () Int)
+;; (assert (> (+ x) 3))
+
+;; check (+ 1) is just 1
+;; (declare-fun x () Int)
+;; (assert (= x (+ 1)))
+
+;; check total-cost is a valid constant name
+(declare-fun total-cost () Int)
+(assert (= total-cost (+ 1)))
 
 
 ;;(assert (= ( 1 2) (3 4)))

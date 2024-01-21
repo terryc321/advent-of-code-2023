@@ -262,6 +262,9 @@ multiple threads each generating a set of next states
 #(2 4 3 3 1 3 1 1 1 2 4 3 3 3 2 2 3 4 4 2 5 3 1 4 1 2 1 5 4 3 3 2 5 5 2 1 4 2 2 4 2 4 5 4 3 3 5 3 6 4 3 6 4 2 3 4 3 2 3 6 5 2 3 6 2 5 4 3 5 5 2 5 3 5 2 2 3 2 5 6 4 6 4 5 6 5 2 4 4 5 4 5 2 3 6 4 2 5 6 3 4 5 2 4 4 4 1 2 2 2 2 5 3 5 1 3 2 5 4 1 5 5 5 5 3 4 1 1 1 3 3 1 1 4 1 4 4 4 4 1 2 )
 ))
 
+;; do the big one instead
+(set! *vec* *vec2*)
+
 (define (xy x y)
   (vector-ref (vector-ref *vec* y) x))
 
@@ -437,61 +440,113 @@ x x x
     res))
 
 
-
-(define (result nx ny)
-  (append
-
-   ;; reset is a chicken scheme reserved repl word
-   (z3-reset)
-   
-   (echo (format #f "trying nx = ~a : ny = ~a " nx ny))
-   ;; board has width and height
-   (intro-width-height)
-
-   ;; declare a load of x , y variables integers
-   (declare-x nx)
-   (declare-y ny)
-
-   ;; x , y variables can only be -3 -2 -1 1 2 or 3 
-   (constrain-x nx)
-   (constrain-y ny)
-
-   ;; sum x variables must lie within 0 to width - 1
-   ;; sum y variables must lie within 0 to height - 1 
-   (constrain-width nx)
-   (constrain-height ny)
-
-   ;; ask if we can reach a certain square ?
-   (ask-loop nx ny)
-   
-   ;;(get-model)
-   ))
-
-
-;; for example 13 by 13 grid
-;; vary nx ny from ? 2 to 12 ??
-;; --- only get solutions that go right first ... due to ask-loop?
-;; e.g x1 could have a value -3 to +3 excluding 0
-;; but we could completely ignore x1 in computations ?? need to rewrite them ...
-(define (explore)
+(define (ask-solution nx ny)
   (let ((res '()))
-    ;;(set! res (append res (result 12 12)))    
-    ;;(do-for nx (2 15 1)
-    (do-for nx (4 5 1) 
-	    (let ((ny (- nx 1)))
-	      (set! res (append res (result nx ny))))
-	    (let ((ny nx))
-	      (set! res (append res (result nx ny)))))
+    (let ((tmp `((push)
+		 ,@(echo (format #f "with nx = ~a: ny = ~a : can we reach bottom-right corner ~a ~a ??"
+				 nx ny (- *width* 1) (- *height* 1)))
+		 ,@(ask-if-can-reach nx ny (- *width* 1) (- *height* 1))
+		 (check-sat)
+		 (pop))))
+      (set! res (append res tmp))
+      res)))
+
+
+
+
+
+(define (declare-costs nx ny)
+  (let ((res '()))
+    (let ((x-syms '())
+	  (y-syms '()))
+      (set! res (append res `((declare-fun cost-total () Int))))
+      (set! res (append res `((declare-fun cost (Int Int) Int))))
+
+      (do-for  j (1 (+ (max nx ny) 1) 1)	       
+	       (let ((sx (string->symbol (format #f "x~a" j)))
+		     (sy (string->symbol (format #f "y~a" j)))
+		     (cx (string->symbol (format #f "cx~a" j)))
+		     (cy (string->symbol (format #f "cy~a" j))))
+		 (set! res (append res
+				   `((declare-fun ,cx () Int)
+				     (declare-fun ,cy () Int))))))
+      res)))
+
+
+
+
+
+(define (declare-grid-costs)
+  (let ((res '()))
+    (do-for  j (0 *width* 1)
+	     (do-for k (0 *height* 1)		     
+		 (set! res (append res
+				   `((assert (= (cost ,j ,k) ,(xy j k))))))))
     res))
 
 
-;; dump output to a file
-(define (shunt)
-  (call-with-output-file "batch.smt2"
-    (lambda (port)
-      (let ((exprs (explore)))
-	(do-list (expr exprs)
-		 (pp expr port))))))
+
+(define (compute-costs-cx-cy nx ny)
+  (let ((res '()))
+    ;; 0 is so (+ 0) keeps z3 solver from complaining no args to + add operator
+    (let ((x-syms '(0))
+	  (y-syms '(0))
+	  (c-syms '(0)))
+      (do-for  j (1 (+ (max nx ny) 1) 1)	       
+	       (let ((sx (string->symbol (format #f "x~a" j)))
+		     (sy (string->symbol (format #f "y~a" j)))
+		     (cx (string->symbol (format #f "cx~a" j)))
+		     (cy (string->symbol (format #f "cy~a" j))))
+		 (set! res (append res
+				   (cond 
+				    ((< j (+ nx 1))
+				     (let ((tmp
+					    `((assert (implies (= ,sx 1) (= ,cx (cost (+ 1 ,@x-syms) (+ ,@y-syms)))))
+					      (assert (implies (= ,sx 2) (= ,cx (+ (cost (+ 1 ,@x-syms) (+ ,@y-syms))
+										   (cost (+ 2 ,@x-syms) (+ ,@y-syms))))))
+					      (assert (implies (= ,sx 3) (= ,cx (+ (cost (+ 1 ,@x-syms) (+ ,@y-syms))
+										   (cost (+ 2 ,@x-syms) (+ ,@y-syms))
+										   (cost (+ 3 ,@x-syms) (+ ,@y-syms)))))))))
+				       ;; used for side effect - when appended gets eliminated as empty list
+				       (set! x-syms (cons sx x-syms))
+				       ;; cost components cx's
+				       (set! c-syms (cons cx c-syms))
+				       tmp))
+				    (#t '()))
+				   (cond
+				    ((< j (+ ny 1))
+				     (let ((tmp				   
+					    `((assert (implies (= ,sy 1) (= ,cy (cost (+ ,@x-syms) (+ 1 ,@y-syms)))))
+					      (assert (implies (= ,sy 2) (= ,cy (+ (cost (+ ,@x-syms) (+ 1 ,@y-syms))
+										   (cost (+ ,@x-syms) (+ 2 ,@y-syms))))))
+					      (assert (implies (= ,sy 3) (= ,cy (+ (cost (+ ,@x-syms) (+ 1 ,@y-syms))
+										   (cost (+ ,@x-syms) (+ 2 ,@y-syms))
+										   (cost (+ ,@x-syms) (+ 3 ,@y-syms)))))))))
+				       (set! y-syms (cons sy y-syms))
+				       ;; cost components cy's
+				       (set! c-syms (cons cy c-syms))
+				       
+				       tmp))
+				    (#t '()))
+				   ))))
+      ;; cost total over entire board is sum individual cx-costs cy-costs cx1 + cy1 + cx2 + cy2 ... etc...
+      (append res
+	      `((assert (= cost-total (+ ,@c-syms))))))))
+
+
+		   
+		  
+		   
+      ;; 			(set! tmp (cons s tmp))))
+      ;; 	     (reverse tmp)))
+      ;; 	  (y-syms
+      ;; 	   (let ((tmp '()))
+      ;; 	     (do-for  j (1 (+ ny 1) 1)
+      ;; 		      (let ((s (string->symbol (format #f "y~a" j))))
+      ;; 			(set! tmp (cons s tmp))))
+      ;; 	     (reverse tmp))))
+      ;; `((assert (and (= (+ ,@x-syms) ,tx)
+      ;; 		     (= (+ ,@y-syms) ,ty)))))))
 
 
 #|
@@ -507,7 +562,6 @@ c2x can represent cost of x2 move
 ;; if satifiable then found a lower cost solution 
 (assert (< cost some-value))
 
-
 (assert (implies (= x1 1) (at 1 0 1)))
 (assert (implies (= x1 2) (and (at 2 0 2) (at 1 0 1))))
 (assert (implies (= x1 3) (and (at 3 0 3) (at 2 0 2) (at 1 0 1))))
@@ -515,6 +569,7 @@ c2x can represent cost of x2 move
 (assert (implies (= y1 1) (at x1 1 (+ x1 1))))
 (assert (implies (= y1 2) (and (at x1 1 (+ x1 1)) (at x1 2 (+ x1 2)))))
 (assert (implies (= y1 3) (and (at x1 1 (+ x1 1)) (at x1 2 (+ x1 2)) (at x1 3 (+ x1 3)))))
+
 
 ;; look at cumulative totals
 ;; 0 0
@@ -558,12 +613,76 @@ x1 + 3 , y1                          x1 + y1 + 3
 
 ;; do we have a way to fill in missing blanks ?
 ;; (pos 0 0 0)
-
-
-
 |#
 
 
+
+(define (result nx ny)
+  (append
+
+   ;; reset is a chicken scheme reserved repl word
+   (z3-reset)
+   
+   (echo (format #f "trying nx = ~a : ny = ~a " nx ny))
+   ;; board has width and height
+   (intro-width-height)
+
+   ;; declare a load of x , y variables integers
+   (declare-x nx)
+   (declare-y ny)
+
+   (declare-costs nx ny)
+   (declare-grid-costs)
+   ;;
+   
+   ;; x , y variables can only be -3 -2 -1 1 2 or 3 
+   (constrain-x nx)
+   (constrain-y ny)
+
+   ;; sum x variables must lie within 0 to width - 1
+   ;; sum y variables must lie within 0 to height - 1 
+   (constrain-width nx)
+   (constrain-height ny)
+
+   ;; costs
+   (compute-costs-cx-cy nx ny)
+   
+   ;; ask if we can reach a certain square ?
+   ;;(ask-loop nx ny)
+   (ask-solution nx ny)
+   
+   ;;(get-model)
+   ))
+
+
+;; for example 13 by 13 grid
+;; vary nx ny from ? 2 to 12 ??
+;; --- only get solutions that go right first ... due to ask-loop?
+;; e.g x1 could have a value -3 to +3 excluding 0
+;; but we could completely ignore x1 in computations ?? need to rewrite them ...
+(define (explore)
+  (let ((res '()))
+    ;;(set! res (append res (result 12 12)))    
+    ;;(do-for nx (2 15 1)
+    (do-for nx (50 51  1) 
+	    ;; (let ((ny (- nx 1)))
+	    ;;   (set! res (append res (result nx ny))))
+	    (let ((ny nx))
+	      (set! res (append res (result nx ny)))))
+    res))
+
+
+
+;; dump output to a file
+(define (shunt)
+  (call-with-output-file "batch.smt2"
+    (lambda (port)
+      (let ((exprs (explore)))
+	(do-list (expr exprs)
+		 (pp expr port))))))
+
+
+(shunt)
 
 
 
