@@ -241,24 +241,27 @@
 ;; depending on how we compute cost we can either ignore x1 meaning we go down directly
 ;; or we can include x1 and thiink of moving right immediately
 
-;; constants are functions of no arguments
-(declare-fun width () Int)  
-(declare-fun height () Int)
+;; ;; constants are functions of no arguments
+;; (declare-fun width () Int)  
+;; (declare-fun height () Int)
 
-(assert (= width 141))
-(assert (= height 141))
+;; (assert (= width 141))
+;; (assert (= height 141))
 
-(declare-fun x1 () Int)  
-(declare-fun y1 () Int)
+;; (declare-fun x1 () Int)  
+;; (declare-fun y1 () Int)
 
-(declare-fun x2 () Int)  
-(declare-fun y2 () Int)
+;; (declare-fun x2 () Int)  
+;; (declare-fun y2 () Int)
 
-(declare-fun x3 () Int)  
-(declare-fun y3 () Int)
+;; (declare-fun x3 () Int)  
+;; (declare-fun y3 () Int)
 
-(declare-fun x4 () Int)  
-(declare-fun y4 () Int)
+;; (declare-fun x4 () Int)  
+;; (declare-fun y4 () Int)
+
+;; (maximize (+ x y))
+;; (minimize (+ x y))
 
 ;; ;; stay with zero indexing
 ;; ;; p1x = 0 or 1 however want indices to work
@@ -274,27 +277,27 @@
 ;; (declare-fun p4x () Int)  
 ;; (declare-fun p4y () Int)
 
-;; x1 cannot go left as already far left as can go
-;; y1 cannot go up as already high as can go
-(assert (or (= x1 1)(= x1 2)(= x1 3)))
-(assert (or (= y1 1)(= y1 2)(= y1 3)))
-(assert (> x1 0))
-(assert (> y1 0))
+;; ;; x1 cannot go left as already far left as can go
+;; ;; y1 cannot go up as already high as can go
+;; (assert (or (= x1 1)(= x1 2)(= x1 3)))
+;; (assert (or (= y1 1)(= y1 2)(= y1 3)))
+;; (assert (> x1 0))
+;; (assert (> y1 0))
 
-(assert (or (= x2 -3)(= x2 -2)(= x2 -1)(= x2 1)(= x2 2)(= x2 3)))
-(assert (or (= y2 -3)(= y2 -2)(= y2 -1)(= y2 1)(= y2 2)(= y2 3)))
-(assert (> (+ x1 x2) 0))
-(assert (> (+ y1 y2) 0))
+;; (assert (or (= x2 -3)(= x2 -2)(= x2 -1)(= x2 1)(= x2 2)(= x2 3)))
+;; (assert (or (= y2 -3)(= y2 -2)(= y2 -1)(= y2 1)(= y2 2)(= y2 3)))
+;; (assert (> (+ x1 x2) 0))
+;; (assert (> (+ y1 y2) 0))
 
-(assert (or (= x3 -3)(= x3 -2)(= x3 -1)(= x3 1)(= x3 2)(= x3 3)))
-(assert (or (= y3 -3)(= y3 -2)(= y3 -1)(= y3 1)(= y3 2)(= y3 3)))
-(assert (> (+ x1 x2 x3) 0))
-(assert (> (+ y1 y2 y3) 0))
+;; (assert (or (= x3 -3)(= x3 -2)(= x3 -1)(= x3 1)(= x3 2)(= x3 3)))
+;; (assert (or (= y3 -3)(= y3 -2)(= y3 -1)(= y3 1)(= y3 2)(= y3 3)))
+;; (assert (> (+ x1 x2 x3) 0))
+;; (assert (> (+ y1 y2 y3) 0))
 
-(assert (or (= x4 -3)(= x4 -2)(= x4 -1)(= x4 1)(= x4 2)(= x4 3)))
-(assert (or (= y4 -3)(= y4 -2)(= y4 -1)(= y4 1)(= y4 2)(= y4 3)))
-(assert (and (< (+ x1 x2 x3 x4) width) (> (+ x1 x2 x3 x4) 0)))
-(assert (and (< (+ y1 y2 y3 y4) height) (> (+ y1 y2 y3 y4) 0)))
+;; (assert (or (= x4 -3)(= x4 -2)(= x4 -1)(= x4 1)(= x4 2)(= x4 3)))
+;; (assert (or (= y4 -3)(= y4 -2)(= y4 -1)(= y4 1)(= y4 2)(= y4 3)))
+;; (assert (and (< (+ x1 x2 x3 x4) width) (> (+ x1 x2 x3 x4) 0)))
+;; (assert (and (< (+ y1 y2 y3 y4) height) (> (+ y1 y2 y3 y4) 0)))
 
 
 ;; (0 0)
@@ -306,16 +309,16 @@
 ;; (x1 + x2 + x3 + x4, y1 + y2 + y3)
 ;; (x1 + x2 + x3 + x4, y1 + y2 + y3 + y4)
 ;; --- ask if we can get to a certain square
-(assert (and (= 5 (+ x1 x2 x3 x4))
-	     (= 5 (+ y1 y2 y3 y4))))
+;; (assert (and (= 5 (+ x1 x2 x3 x4))
+;; 	     (= 5 (+ y1 y2 y3 y4))))
 
-;; (x1 + x2 + x3 + x4 + x5, y1 + y2 + y3 + y4)
-;; (x1 + x2 + x3 + x4 + x5, y1 + y2 + y3 + y4 + y5)
+;; ;; (x1 + x2 + x3 + x4 + x5, y1 + y2 + y3 + y4)
+;; ;; (x1 + x2 + x3 + x4 + x5, y1 + y2 + y3 + y4 + y5)
 
-(declare-fun f (Int) Int)
-(assert (= (f 5) 3))
-(assert (= (f 3) 2))
-;;(assert (= (f 3) (f 5)))
+;; (declare-fun f (Int) Int)
+;; (assert (= (f 5) 3))
+;; (assert (= (f 3) 2))
+;; ;;(assert (= (f 3) (f 5)))
 
 
 
@@ -331,9 +334,15 @@
 ;; y1 y2 y3 y4
 ;;(assert false)
 
+(declare-fun x () Int)
+(assert (> (+ x) 3))
+
+
 ;;(assert (= ( 1 2) (3 4)))
 (check-sat)
 (get-model)
+
+
 
 
 

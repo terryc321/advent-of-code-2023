@@ -1,0 +1,60 @@
+(reset)
+(echo "trying nx = 4 : ny = 4 ")
+(declare-fun width () Int)
+(declare-fun height () Int)
+(assert (= width 13))
+(assert (= height 13))
+(declare-fun x1 () Int)
+(declare-fun x2 () Int)
+(declare-fun x3 () Int)
+(declare-fun x4 () Int)
+(declare-fun y1 () Int)
+(declare-fun y2 () Int)
+(declare-fun y3 () Int)
+(declare-fun y4 () Int)
+
+;; how many time steps do we need ?
+;; at time=T x y
+;; 0 0 0 no cost
+
+(declare-fun cost () Int)
+
+;; 0 0
+;; x1 = 1   (= c1 (cost 1 0))
+;; x1 = 2   (= c1 (+ (cost 1 0) (cost 2 0)))
+;; x1 = 3   (= c1 (+ (cost 1 0) (cost 2 0) (cost 3 0)))
+
+(assert (at 0 0 0))
+
+
+(assert (or (= x1 -3) (= x1 -2) (= x1 -1) (= x1 3) (= x1 2) (= x1 1)))
+(assert (or (= x2 -3) (= x2 -2) (= x2 -1) (= x2 3) (= x2 2) (= x2 1)))
+(assert (or (= x3 -3) (= x3 -2) (= x3 -1) (= x3 3) (= x3 2) (= x3 1)))
+(assert (or (= x4 -3) (= x4 -2) (= x4 -1) (= x4 3) (= x4 2) (= x4 1)))
+(assert (or (= y1 -3) (= y1 -2) (= y1 -1) (= y1 3) (= y1 2) (= y1 1)))
+(assert (or (= y2 -3) (= y2 -2) (= y2 -1) (= y2 3) (= y2 2) (= y2 1)))
+(assert (or (= y3 -3) (= y3 -2) (= y3 -1) (= y3 3) (= y3 2) (= y3 1)))
+(assert (or (= y4 -3) (= y4 -2) (= y4 -1) (= y4 3) (= y4 2) (= y4 1)))
+(assert (> (+ x1) 0))
+(assert (< (+ x1) width))
+(assert (> (+ x1 x2) 0))
+(assert (< (+ x1 x2) width))
+(assert (> (+ x1 x2 x3) 0))
+(assert (< (+ x1 x2 x3) width))
+(assert (> (+ x1 x2 x3 x4) 0))
+(assert (< (+ x1 x2 x3 x4) width))
+(assert (> (+ y1) 0))
+(assert (< (+ y1) height))
+(assert (> (+ y1 y2) 0))
+(assert (< (+ y1 y2) height))
+(assert (> (+ y1 y2 y3) 0))
+(assert (< (+ y1 y2 y3) height))
+(assert (> (+ y1 y2 y3 y4) 0))
+(assert (< (+ y1 y2 y3 y4) height))
+
+(push)
+(echo "with nx = 4: ny = 4 : can we reach 12 12 ??")
+(assert (and (= (+ x1 x2 x3 x4) 12) (= (+ y1 y2 y3 y4) 12)))
+(check-sat)
+(get-model)
+(pop)
