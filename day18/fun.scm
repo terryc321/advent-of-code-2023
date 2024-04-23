@@ -1,4 +1,7 @@
 
+
+;; for first second third etc... to be made available ..
+;; mixing macros with runtime ?
 (import-for-syntax srfi-1)
 		   
 
@@ -882,6 +885,18 @@ expr = for X   0    lim by
     (format #t "~%~%")))
 
 
+(define (test-2)
+  (let ((h (run input)))
+    ;; (show-grid h)
+    (format #t "~% count is ~a ~%~%" (count h))
+    (fill-interior h)
+    ;; (show-grid h)
+    (format #t "~% count is ~a ~%~%" (count h))
+    (format #t "~%~%")))
+
+
+
+
 #|
 
 (test-1)
@@ -908,8 +923,8 @@ __XXXXX
 __XXXXX
 XXXXXXX
 XXXXX__
-XX__XXX
-_XXXXXX
+XXOOXXX        
+_XXXXXX  
 _XXXXXX
 
  count is 60 
