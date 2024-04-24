@@ -876,8 +876,13 @@ ie pen is a bool flipped whenever meet #
 ;; (run *example*) 
 ;; (run *input*)
 
+#|
 
+(dbug2)  ;; actually fills with recursive paint algorithm , flood fill
 
+FUN> (count-holes)
+92758
 
+|#
 
 
