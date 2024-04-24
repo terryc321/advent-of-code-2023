@@ -18,8 +18,9 @@ test update from new mobo
 
 ![outline image](./day18/common-lisp/Target-35-365-Screenshot_2024-04-24_16-01-11.png?raw=True)
 
-![fill image](./day18/common-lisp/Screenshot_2024-04-23_15-02-48.png?raw=True)
+![outline2 image](./day18/common-lisp/Screenshot_2024-04-23_15-02-48.png?raw=True)
 
+![recursive_fill image](./day18/common-lisp/recursive-fill-Screenshot_2024-04-24_16-24-33.png)
 
 
 
