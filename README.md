@@ -14,6 +14,11 @@ test update from new mobo
 
 ![day 17 part two disaster](https://github.com/terryc321/advent-of-code-2023/blob/main/day17/solution.png?raw=true)
 
+## day 18
+
+![fill image](https://github.com/terryc321/advent-of-code-2023/day18/common-lisp/Target-35-365-Screenshot_2024-04-24_16-01-11.png?raw=True)
+
+![fill image](https://github.com/terryc321/advent-of-code-2023/day18/common-lisp/Screenshot_2024-04-23_15-02-48.png?raw=True)
 
 
 
