@@ -164,9 +164,10 @@ on trigger a conjunction it also has to know where did pulse come from
 	 (#t (run-loop))))
        (#t (let ((fn (car working-stack)))
 	     (set! working-stack (cdr working-stack))
+	     (display "executing fn => [") (display fn) (display "]")(newline)
 	     (fn)
 	     (loop))))))
-  
+    
   ;; start 
     (broadcast)
     (run-loop))
