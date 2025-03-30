@@ -1,7 +1,10 @@
+#lang racket
+
 ;; guile
 ;;(getcwd)
 ;;(chdir "day20/guile")
-(import (ice-9 format))
+;; (import (ice-9 format))
+
 
 #|
 
@@ -24,9 +27,20 @@ on trigger a conjunction it also has to know where did pulse come from
 			    (c  inv))
 			   (conjunctions (inv   a))))
 
+
 ;; defmacro
-(define-macro (save . body)
-  `(set! todo-stack (append todo-stack (list (lambda () ,@body)))))
+;; (define-macro (save . body)
+;;   `(set! todo-stack (append todo-stack (list (lambda () ,@body)))))
+(define-syntax save
+  (syntax-rules ()
+    ((_ stk body ...) (set! stk (append stk (list (lambda () body ...)))))))
+
+(define-syntax format2
+  (syntax-rules ()
+    ((_ out body ...) (format body ...))))
+
+
+    
 
 
 ;; (let ((stack '()))
@@ -48,16 +62,16 @@ on trigger a conjunction it also has to know where did pulse come from
       
   ;; what does broadcaster do exactly - sends lo pulse to all modules  
   (define (broadcast)
-    (save
-     (format #t "broadcast low -> a~%")
+    (save todo-stack
+     (format2 #t "broadcast low -> a~%")
      (fa 'lo))
 
-    (save
-     (format #t "broadcast low -> b~%")
+    (save todo-stack
+     (format2 #t "broadcast low -> b~%")
      (fb 'lo))
 
-    (save
-     (format #t "broadcast low -> c~%")
+    (save todo-stack
+     (format2 #t "broadcast low -> c~%")
      (fc 'lo)))
   
   (define (flip-state state)
@@ -73,14 +87,14 @@ on trigger a conjunction it also has to know where did pulse come from
 		  ((eq? pulse 'hi) #t)		  
 		  ((eq? pulse 'lo) (cond
 				    ((eq? state 'off)
-				     (save
+				     (save todo-stack
 				      (set! state (flip-state state))
-				      (format #t "a hi -> b~%")
+				      (format2 #t "a hi -> b~%")
 				      (fb 'hi))
 				     ((eq? state 'on)
-				      (save 
+				      (save todo-stack 
 				       (set! state (flip-state state))
-				       (format #t "a lo -> b~%")
+				       (format2 #t "a lo -> b~%")
 				       (fb 'lo))))))))))
   
   ;; fb -> fc 
@@ -90,14 +104,14 @@ on trigger a conjunction it also has to know where did pulse come from
 		  ((eq? pulse 'hi) #t)		  
 		  ((eq? pulse 'lo) (cond
 				    ((eq? state 'off)
-				     (save
+				     (save todo-stack
 				      (set! state (flip-state state))
-				      (format #t "b hi -> c~%")
+				      (format2 #t "b hi -> c~%")
 				      (fc 'hi)))
 				    ((eq? state 'on)
-				     (save
+				     (save todo-stack
 				      (set! state (flip-state state))
-				      (format #t "b lo -> c~%")
+				      (format2 #t "b lo -> c~%")
 				      (fc 'lo)))
 				    ))))))
   
@@ -108,14 +122,14 @@ on trigger a conjunction it also has to know where did pulse come from
 		  ((eq? pulse 'hi) #t)		  
 		  ((eq? pulse 'lo) (cond
 				    ((eq? state 'off)
-				     (save
+				     (save todo-stack
 				      (set! state (flip-state state))
-				      (format #t "c hi -> inv from c~%")
+				      (format2 #t "c hi -> inv from c~%")
 				      (finv 'hi 'c)))
 				    ((eq? state 'on)
-				     (save
+				     (save todo-stack
 				      (set! state (flip-state state))
-				      (format #t "c lo -> inv from c~%")
+				      (format2 #t "c lo -> inv from c~%")
 				      (finv 'lo 'c))
 				     )))))))
   
@@ -130,13 +144,13 @@ on trigger a conjunction it also has to know where did pulse come from
 		   (cond
 		    ((eq? memory-c 'hi) ;; send low pulse
 		     ;;(send-lo-pulse fa)
-		     (save
-		      (format #t "inv lo -> a~%")
+		     (save todo-stack
+		      (format2 #t "inv lo -> a~%")
 		      (fa 'lo)))
 		    (#t ;; send hi pulse
 		     ;;(send-hi-pulse fa)
-		     (save
-		      (format #t "inv hi -> a~%")
+		     (save todo-stack
+		      (format2 #t "inv hi -> a~%")
 		      (fa 'hi)))))))
   
 
