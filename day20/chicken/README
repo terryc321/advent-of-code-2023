@@ -1,0 +1,40 @@
+
+flipflop.scm
+has a single state either on or off
+whereas conjunction has multiple inputs 
+
+conjunction.scm
+does AND conjunction if all inputs are HIGH then sends a LOW pulse
+conjunction module has to know all of the inputs that are
+
+(make-flipflop a (b))
+(make-flipflop b (c))
+(make-flipflop c (inv))
+(make-conjunction inv (c) (a))
+
+broadcaster -> a ,b ,c
+
+but time say c is defined inv is not defined
+
+---------------------------------
+(begin
+ (define a #f)
+ (define b (list a))
+ (set! a (list '1 2 3))
+ b)
+
+b will not reflect fact that a has been reassigned
+--------------------------------
+(define v (make-vector 10))
+;; assign a to be slot 0 in v
+(vector-set! v 0 (list 1 2 3))
+v
+
+if pass in a way to reference into vector v then it will 
+
+--------------------------------
+
+
+
+
+
