@@ -6,6 +6,19 @@
 (define-macro (incf x)
   `(set! ,x (+ ,x 1)))
 
+;; -------------------------------------------------
+;; (delay! x) we add expressions to the todo-group
+(define todo-group '())
+(define-macro (delay! . body)
+  `(begin
+     (set! todo-group (cons (lambda () ,@body) todo-group))))
+
+(define working-group '())
+
+;;(delay! (format #t "alpha") (format #t "beta!~%"))
+
+
+
 
 
 ;; ---------------------------------------------
@@ -17,72 +30,16 @@
 (import (srfi-69)) ;; hash
 (define ppp pp)
 
-
 (define puzzle '(
-		 (broadcast sr gd mg hf)
+		 (broadcast a b c)
 		 (flipflops
-		  ( rx ) ;; rx not defined anywhere?
-		  ( jb   ps)
-		  ( cm   ps  tm)
-		  ( sl   ml  cp)
-		  ( qr   ml)
-		  ( hf   kh  jg)
-		  ( jg   kk)
-		  ( jt   pq)
-		  ( qv   kv)
-		  ( rj   mm  kh)
-		  ( kf   xt)
-		  ( kx   vk  mk)
-		  ( dq   qn)
-		  ( jk   hh  ps)
-		  ( rr   mk  nh)
-		  ( hs   kh  mb)
-		  ( mg   mk  kf)
-		  ( xt   dq  mk)
-		  ( mq   nt)
-		  ( nh   bm)
-		  ( md   hs)
-		  ( vk   mk  vl)
-		  ( mm   kh)
-		  ( kc   ps  jk)
-		  ( kk   dm)
-		  ( jn   ll  ml)
-		  ( pp   kh  md)
-		  ( zf   ml  bd)
-		  ( qx   pp)
-		  ( qn   rr)
-		  ( mb   qb  kh)
-		  ( nt   jt)
-		  ( vl   zk  mk)
-		  ( gd   ml  rm)
-		  ( hh   ps  jb)
-		  ( tm   ps  mq)
-		  ( kv   jn  ml)
-		  ( zs   kc)
-		  ( ll   ml  kq)
-		  ( cp   qv  ml)
-		  ( rm   sl  ml)
-		  ( bd   qr  ml)
-		  ( dm   qx)
-		  ( qb   rj  kh)
-		  ( pq   zs)
-		  ( bm   kx)
-		  ( sr   cm  ps)
-		  ( zk   mk)
-		  ( kq   zf))
-
+		  ( a b)
+		  ( b c)
+		  ( c inv)
+		  )
 		 (conjunctions
-		  ( ps   xc  mq  jt  zs  sr  nt  pq)
-		  ( xc   zh)
-		  ( ml   bp  gd  qv  kq)
-		  ( th   zh)
-		  ( zh   rx)
-		  ( pd   zh)
-		  ( kh   jg  qx  md  th  hf  dm  kk)
-		  ( mk   kf  qn  nh  pd  dq  mg  bm)
-		  ( bp   zh))
-		 )
-  )
+		  ( inv a)
+		  )))
 
 
 ;; flip flops ok since only one internal state
@@ -271,45 +228,45 @@
 	(format #t "flipflop : add-outputs : args given = (~a)~%" (car args))
 	(set! outputs (append outputs (car args)))
 	(format #t "flipflop : outputs now : (~a)~%" outputs))
-       ((eq? op 'pulse) (let ((input (car args)))
-			 (cond
-			  ((high? input) #f)
-			  ((low?  input)
-			   (let ((old-state state))
-			     (set! state (flip-state state))
-			     (cond
-			      ((off? old-state)
-			       (map (lambda (output)
-				      (let ((factual (eval output)))
-					(incf high-pulse-sent-count)
-					(factual 'pulse (high) id))) outputs))
-			      ((on? old-state)
-			       (map (lambda (output)
-				      (let ((factual (eval output)))
-					(incf low-pulse-sent-count)
-					(factual 'pulse (low) id))) outputs))
-			      (#t (error (format #f "flipflop : flip : bad state ~a" old-state))))))			   			   
-			  (#t (error (format #f "flipflop : flip : bad input ~a" input))))))
+       ((eq? op 'pulse)
+	(let ((input (car args))
+	      (from (if (null? (cdr args)) 'anon (car (cdr args)))))
+	  (format #t "flipflop (~a) : received pulse(~a) from ~a ~%" id input from)
+	  (delay! ;; DELAY MACRO !!
+	  (cond
+	   ((high? input) #f)
+	   ((low?  input)
+	    (let ((old-state state))
+	      (set! state (flip-state state))
+	      (cond
+	       ((off? old-state)
+		(map (lambda (output)
+		       (let ((factual (eval output)))
+			 (incf high-pulse-sent-count)
+			 (factual 'pulse (high) id))) outputs))
+	       ((on? old-state)
+		(map (lambda (output)
+		       (let ((factual (eval output)))
+			 (incf low-pulse-sent-count)
+			 (factual 'pulse (low) id))) outputs))
+	       (#t (error (format #f "flipflop : flip : bad state ~a" old-state))))))
+	   (#t (error (format #f "flipflop : flip : bad input ~a" input)))))))
        (#t (error (format #f "flipflop : bad op [~a]: operation not understood ~a" id op)))))))
 
 
 
 
 
+;; (define f (make-flip-flop))
+;; (f 'get-state)
+;; (f 'pulse (low))
+;; (f 'pulse (low))
+;; (f 'pulse (high))
+;; (f 'set-id 'f)
 
 
-
-
-(define f (make-flip-flop))
-(f 'get-state)
-(f 'pulse (low))
-(f 'pulse (low))
-(f 'pulse (high))
-(f 'set-id 'f)
-
-
-(define output (lambda (pulse id) (format #t "received a (~a) pulse from module ~a~%" pulse id)))
-(f 'add-outputs (list output))
+;; (define output (lambda (pulse id) (format #t "received a (~a) pulse from module ~a~%" pulse id)))
+;; (f 'add-outputs (list output))
 
 ;; ----------------------------------------------------
 ;; from conjunction.scm
@@ -324,7 +281,6 @@ looks at all modules and
 
 if remembers high pulses for all inputs - sends a low pulse
 otherwise it sends a high pulse
-
 
 |#
 
@@ -401,7 +357,8 @@ otherwise it sends a high pulse
        ((eq? op 'pulse)
 	(let ((input (car args))
 	      (from (car (cdr args))))
-	  (format #t "conjunction : flip : input(~a) from(~a)~%" input from)
+	  (delay! ;; DELAY MACRO 
+	  (format #t "conjunction (~a) : received pulse(~a) from ~a ~%" id input from)
 	  ;; save signal
 	  (set-alist-value! inputs from input)
 	  ;; all high? - send a low pulse
@@ -416,8 +373,8 @@ otherwise it sends a high pulse
 	    (map (lambda (output)
 		   (let ((factual (eval output)))
 		     (incf high-pulse-sent-count)
-		     (factual 'pulse (high) id)))
-		 outputs)))))       
+		     (factual 'pulse (high) id))) outputs))))))
+       
        (#t (error (format #f "conjunction : (~a) bad op : operation not understood ~a" id op)))))))
 
 
@@ -453,7 +410,6 @@ otherwise it sends a high pulse
 ;; (bb 'pulse (high) 'c)
 
 
-
 (define procedure-vector (make-vector (vector-length symbol-vector)))
 
 
@@ -486,12 +442,38 @@ otherwise it sends a high pulse
      all-symbols)
 
 
+
+;; move todo into
+(define keep-working
+  (lambda ()
+    (cond
+     ((null? working-group)
+      (set! working-group todo-group)
+      (set! todo-group '())
+      (when (not (null? working-group))
+	(keep-working)))
+     (#t (let ((task (car working-group)))
+	   (set! working-group (cdr working-group))
+	   (task)
+	   (keep-working))))))
+
+      
+    
+
+
 (define (push)
   ;; broadcast sends a low pulse to [ sr gd mg hf ]
-  (sr 'pulse (low) 'broadcast)
-  (gd 'pulse (low) 'broadcast)
-  (mg 'pulse (low) 'broadcast)
-  (hf 'pulse (low) 'broadcast))
+  (incf low-pulse-sent-count)
+  (a 'pulse (low) 'broadcast)
+  (incf low-pulse-sent-count)
+  (b 'pulse (low) 'broadcast)
+  (incf low-pulse-sent-count)
+  (c 'pulse (low) 'broadcast)
+  (keep-working))
+  
+(define (button)
+  (incf low-pulse-sent-count)
+  (push))
 
 
 (define (repeat n func)
@@ -502,10 +484,21 @@ otherwise it sends a high pulse
 
 
 (define (part1)
-  (repeat 1000 (lambda () (push)))
+  (repeat 1000 (lambda () (button)))
   (let ((result (* low-pulse-sent-count
 		   high-pulse-sent-count)))
-    result))
+    (list result low-pulse-sent-count high-pulse-sent-count)))
+
+  
+
+(define (debug)
+  (repeat 1 (lambda () (button)))
+  (let ((result (* low-pulse-sent-count
+		   high-pulse-sent-count)))
+    (list result low-pulse-sent-count high-pulse-sent-count)))
+
+
+  
 
 ;; too low ...
 ;; > (part1)
